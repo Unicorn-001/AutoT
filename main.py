@@ -5,6 +5,7 @@ from autot.config.settings import (
     ACTIVE_UNIVERSE_FILE,
     BACKTEST_INTERVAL,
     BACKTEST_PERIOD,
+    TOP_N_STOCKS,
 )
 from autot.data.market_data import download_stock_data
 from autot.indicators.technical_indicators import add_all_indicators
@@ -54,7 +55,10 @@ def analyse_stock(symbol: str) -> dict:
     }
 
 
-def save_results_to_csv(results: list[dict]) -> None:
+def save_results_to_csv(
+    results: list[dict],
+    file_path: str,
+) -> None:
     df = pd.DataFrame(results)
 
     numeric_columns = [
@@ -66,11 +70,9 @@ def save_results_to_csv(results: list[dict]) -> None:
     ]
 
     df[numeric_columns] = df[numeric_columns].round(2)
-
-    file_path = "data_storage/processed/backtest_results.csv"
     df.to_csv(file_path, index=False)
 
-    print(f"\nBacktest results saved to: {file_path}")
+    print(f"\nSaved: {file_path}")
 
 
 def main() -> None:
@@ -90,6 +92,8 @@ def main() -> None:
         reverse=True,
     )
 
+    top_results = ranked_results[:TOP_N_STOCKS]
+
     print("\n========== BACKTEST RANKING ==========")
 
     for index, result in enumerate(ranked_results, start=1):
@@ -106,7 +110,26 @@ def main() -> None:
 
     print("======================================")
 
-    save_results_to_csv(ranked_results)
+    print(f"\n========== TOP {TOP_N_STOCKS} SHORTLIST ==========")
+
+    for index, result in enumerate(top_results, start=1):
+        print(
+            f"{index}. {result['symbol']} | "
+            f"Score: {result['score']:.2f} | "
+            f"Signal: {result['signal']}"
+        )
+
+    print("======================================")
+
+    save_results_to_csv(
+        ranked_results,
+        "data_storage/processed/backtest_results.csv",
+    )
+
+    save_results_to_csv(
+        top_results,
+        "data_storage/processed/top_shortlist.csv",
+    )
 
 
 if __name__ == "__main__":
