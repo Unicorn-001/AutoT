@@ -8,6 +8,7 @@ from autot.config.settings import (
 )
 from autot.data.market_data import download_stock_data
 from autot.indicators.technical_indicators import add_all_indicators
+from autot.ranking.ranking_engine import calculate_stock_score
 from autot.strategies.ema_rsi_strategy import generate_signal
 from autot.universe.universe_loader import load_universe
 
@@ -24,9 +25,17 @@ def analyse_stock(symbol: str) -> dict:
     signal = generate_signal(data)
     backtest_result = run_backtest(data)
 
+    score = calculate_stock_score(
+        return_percent=backtest_result["return_percent"],
+        max_drawdown=backtest_result["max_drawdown"],
+        win_rate=backtest_result["win_rate"],
+        total_trades=backtest_result["total_trades"],
+    )
+
     print("--------------------------------")
     print(f"Stock       : {symbol}")
     print(f"Signal      : {signal}")
+    print(f"Score       : {score:.2f}")
     print(f"P/L         : £{backtest_result['profit_loss']:.2f}")
     print(f"Return      : {backtest_result['return_percent']:.2f}%")
     print(f"Max Drawdown: {backtest_result['max_drawdown']:.2f}%")
@@ -36,6 +45,7 @@ def analyse_stock(symbol: str) -> dict:
     return {
         "symbol": symbol,
         "signal": signal,
+        "score": score,
         "profit_loss": backtest_result["profit_loss"],
         "return_percent": backtest_result["return_percent"],
         "max_drawdown": backtest_result["max_drawdown"],
@@ -48,6 +58,7 @@ def save_results_to_csv(results: list[dict]) -> None:
     df = pd.DataFrame(results)
 
     numeric_columns = [
+        "score",
         "profit_loss",
         "return_percent",
         "max_drawdown",
@@ -75,7 +86,7 @@ def main() -> None:
 
     ranked_results = sorted(
         results,
-        key=lambda item: item["profit_loss"],
+        key=lambda item: item["score"],
         reverse=True,
     )
 
@@ -84,6 +95,7 @@ def main() -> None:
     for index, result in enumerate(ranked_results, start=1):
         print(
             f"{index}. {result['symbol']} | "
+            f"Score: {result['score']:.2f} | "
             f"P/L: £{result['profit_loss']:.2f} | "
             f"Return: {result['return_percent']:.2f}% | "
             f"Max DD: {result['max_drawdown']:.2f}% | "
