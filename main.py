@@ -1,14 +1,24 @@
 import pandas as pd
 
-from autot.config.watchlist import load_watchlist
+from autot.backtest.backtester import run_backtest
+from autot.config.settings import (
+    ACTIVE_UNIVERSE_FILE,
+    BACKTEST_INTERVAL,
+    BACKTEST_PERIOD,
+)
 from autot.data.market_data import download_stock_data
 from autot.indicators.technical_indicators import add_all_indicators
 from autot.strategies.ema_rsi_strategy import generate_signal
-from autot.backtest.backtester import run_backtest
+from autot.universe.universe_loader import load_universe
 
 
 def analyse_stock(symbol: str) -> dict:
-    data = download_stock_data(symbol, period="5y", interval="1d")
+    data = download_stock_data(
+        symbol,
+        period=BACKTEST_PERIOD,
+        interval=BACKTEST_INTERVAL,
+    )
+
     data = add_all_indicators(data)
 
     signal = generate_signal(data)
@@ -35,27 +45,25 @@ def analyse_stock(symbol: str) -> dict:
 
 
 def save_results_to_csv(results: list[dict]) -> None:
-
     df = pd.DataFrame(results)
 
     numeric_columns = [
         "profit_loss",
         "return_percent",
         "max_drawdown",
-        "win_rate"
+        "win_rate",
     ]
 
     df[numeric_columns] = df[numeric_columns].round(2)
 
     file_path = "data_storage/processed/backtest_results.csv"
-
     df.to_csv(file_path, index=False)
 
     print(f"\nBacktest results saved to: {file_path}")
 
 
-def main():
-    symbols = load_watchlist()
+def main() -> None:
+    symbols = load_universe(ACTIVE_UNIVERSE_FILE)
     results = []
 
     for symbol in symbols:
@@ -90,4 +98,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()  
+    main()
