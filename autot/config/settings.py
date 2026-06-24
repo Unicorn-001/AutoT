@@ -7,7 +7,7 @@ Purpose:
 """
 
 # Universe selection
-ACTIVE_UNIVERSE_FILE = "autot/universe/uk_stocks.csv"
+ACTIVE_UNIVERSE_FILE = "autot/universe/us_stocks.csv"
 
 # Backtest settings
 BACKTEST_PERIOD = "5y"

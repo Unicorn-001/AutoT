@@ -1,4 +1,5 @@
 import pandas as pd
+import time
 
 from autot.backtest.backtester import run_backtest
 from autot.config.settings import (
@@ -76,6 +77,7 @@ def save_results_to_csv(
 
 
 def main() -> None:
+    start_time = time.time()
     symbols = load_universe(ACTIVE_UNIVERSE_FILE)
     results = []
 
@@ -130,7 +132,10 @@ def main() -> None:
         top_results,
         "data_storage/processed/top_shortlist.csv",
     )
+    end_time = time.time()
+    total_time = end_time - start_time
 
+    print(f"\nExecution time: {total_time:.2f} seconds")
 
 if __name__ == "__main__":
     main()
