@@ -11,7 +11,8 @@ from autot.config.settings import (
 from autot.data.market_data import download_stock_data
 from autot.indicators.technical_indicators import add_all_indicators
 from autot.ranking.ranking_engine import calculate_stock_score
-from autot.strategies.ema_rsi_strategy import generate_signal
+from autot.strategies.manager.strategy_manager import StrategyManager
+from autot.strategies.manager.strategy_consensus import calculate_consensus_signal
 from autot.universe.universe_loader import load_universe
 
 
@@ -24,7 +25,15 @@ def analyse_stock(symbol: str) -> dict:
 
     data = add_all_indicators(data)
 
-    signal = generate_signal(data)
+    strategy_manager = StrategyManager()
+    strategy_results = strategy_manager.run_all(data)
+    consensus = calculate_consensus_signal(strategy_results)
+    signal = consensus["final_signal"]
+    strategy_signal_map = {
+    result["strategy"]: result["signal"]
+    for result in strategy_results
+}
+
     backtest_result = run_backtest(data)
 
     score = calculate_stock_score(
@@ -37,6 +46,15 @@ def analyse_stock(symbol: str) -> dict:
     print("--------------------------------")
     print(f"Stock       : {symbol}")
     print(f"Signal      : {signal}")
+    print(f"Buy Votes   : {consensus['buy_votes']}")
+    print(f"Sell Votes  : {consensus['sell_votes']}")
+    print(f"Hold Votes  : {consensus['hold_votes']}")
+    print("Strategies  :") 
+    for strategy_result in strategy_results:
+        print(
+        f"  {strategy_result['strategy']} -> "
+        f"{strategy_result['signal']}"
+    )
     print(f"Score       : {score:.2f}")
     print(f"P/L         : £{backtest_result['profit_loss']:.2f}")
     print(f"Return      : {backtest_result['return_percent']:.2f}%")
@@ -53,6 +71,14 @@ def analyse_stock(symbol: str) -> dict:
         "max_drawdown": backtest_result["max_drawdown"],
         "win_rate": backtest_result["win_rate"],
         "total_trades": backtest_result["total_trades"],
+        "buy_votes": consensus["buy_votes"],
+        "sell_votes": consensus["sell_votes"],
+        "hold_votes": consensus["hold_votes"],
+        "buy_votes": consensus["buy_votes"],
+        "sell_votes": consensus["sell_votes"],
+        "hold_votes": consensus["hold_votes"],
+        "ema_rsi_signal": strategy_signal_map.get("EMA_RSI_Strategy", "N/A"),
+        "macd_signal": strategy_signal_map.get("MACD_Strategy", "N/A"),
     }
 
 
@@ -108,6 +134,7 @@ def main() -> None:
             f"Win Rate: {result['win_rate']:.2f}% | "
             f"Trades: {result['total_trades']} | "
             f"Signal: {result['signal']}"
+            
         )
 
     print("======================================")
