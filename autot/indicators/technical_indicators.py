@@ -11,7 +11,11 @@ def get_close_series(data: pd.DataFrame) -> pd.Series:
     return close
 
 
-def add_ema(data: pd.DataFrame, short_window: int = 20, long_window: int = 50) -> pd.DataFrame:
+def add_ema(
+    data: pd.DataFrame,
+    short_window: int = 20,
+    long_window: int = 50,
+) -> pd.DataFrame:
     data = data.copy()
     close = get_close_series(data)
 
@@ -31,8 +35,25 @@ def add_rsi(data: pd.DataFrame, window: int = 14) -> pd.DataFrame:
     return data
 
 
+def add_macd(data: pd.DataFrame) -> pd.DataFrame:
+    data = data.copy()
+    close = get_close_series(data)
+
+    ema_12 = close.ewm(span=12, adjust=False).mean()
+    ema_26 = close.ewm(span=26, adjust=False).mean()
+
+    data["MACD"] = ema_12 - ema_26
+    data["MACD_SIGNAL"] = data["MACD"].ewm(
+        span=9,
+        adjust=False,
+    ).mean()
+
+    return data
+
+
 def add_all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data = add_ema(data)
     data = add_rsi(data)
+    data = add_macd(data)
 
     return data
