@@ -6,6 +6,8 @@ Purpose:
     Manage a simulated paper trading portfolio.
 """
 
+from datetime import datetime
+
 from autot.portfolio.position import Position
 from autot.portfolio.trade import Trade
 
@@ -67,6 +69,7 @@ class PaperPortfolio:
                 price=price,
                 quantity=quantity,
                 total_value=total_cost,
+                timestamp=datetime.now(),
             )
         )
 
@@ -97,6 +100,7 @@ class PaperPortfolio:
                 price=price,
                 quantity=position.quantity,
                 total_value=total_value,
+                timestamp=datetime.now(),
             )
         )
 

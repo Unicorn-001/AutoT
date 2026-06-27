@@ -7,6 +7,7 @@ Purpose:
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass
@@ -20,3 +21,4 @@ class Trade:
     price: float
     quantity: int
     total_value: float
+    timestamp: datetime
