@@ -31,10 +31,9 @@ class EmaRsiStrategy(StrategyInterface):
 
         latest_row = data.iloc[-1]
 
-        ema_20 = latest_row["EMA20"]
-        ema_50 = latest_row["EMA50"]
-        rsi = latest_row["RSI"]
-
+        ema_20 = latest_row[("EMA_20", "")]
+        ema_50 = latest_row[("EMA_50", "")]
+        rsi = latest_row[("RSI", "")]
         if ema_20 > ema_50 and rsi > 50:
             return "BUY"
 
