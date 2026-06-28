@@ -9,5 +9,5 @@ Purpose:
 
 ENABLED_STRATEGIES = {
     "EMA_RSI": True,
-    "MACD": False,
+    "MACD": True,
 }
