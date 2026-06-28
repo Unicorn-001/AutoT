@@ -9,7 +9,7 @@ Purpose:
 from autot.config.strategy_settings import ENABLED_STRATEGIES
 from autot.strategies.ema_rsi_strategy_class import EmaRsiStrategy
 from autot.strategies.macd_strategy_class import MacdStrategy
-
+from autot.strategies.bollinger_strategy_class import BollingerStrategy
 
 class StrategyRegistry:
     """
@@ -24,7 +24,9 @@ class StrategyRegistry:
 
         if ENABLED_STRATEGIES.get("MACD", False):
             self._strategies.append(MacdStrategy())
-
+        if ENABLED_STRATEGIES.get("BOLLINGER", False):
+            self._strategies.append(BollingerStrategy())
+            
     def get_all(self):
         """
         Return all registered strategies.

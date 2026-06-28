@@ -50,10 +50,26 @@ def add_macd(data: pd.DataFrame) -> pd.DataFrame:
 
     return data
 
+def add_bollinger_bands(
+    data: pd.DataFrame,
+    window: int = 20,
+    num_std: int = 2,
+) -> pd.DataFrame:
+    data = data.copy()
+    close = get_close_series(data)
+
+    middle_band = close.rolling(window=window).mean()
+    std_dev = close.rolling(window=window).std()
+
+    data["BB_MIDDLE"] = middle_band
+    data["BB_UPPER"] = middle_band + (std_dev * num_std)
+    data["BB_LOWER"] = middle_band - (std_dev * num_std)
+
+    return data
 
 def add_all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data = add_ema(data)
     data = add_rsi(data)
     data = add_macd(data)
-
+    data = add_bollinger_bands(data)
     return data

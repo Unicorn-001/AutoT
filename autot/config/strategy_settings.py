@@ -10,4 +10,5 @@ Purpose:
 ENABLED_STRATEGIES = {
     "EMA_RSI": True,
     "MACD": True,
+    "BOLLINGER": True,
 }
