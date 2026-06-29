@@ -49,12 +49,14 @@ def analyse_stock(symbol: str) -> dict:
     print(f"Buy Votes   : {consensus['buy_votes']}")
     print(f"Sell Votes  : {consensus['sell_votes']}")
     print(f"Hold Votes  : {consensus['hold_votes']}")
-    print("Strategies  :") 
+    print("Strategies  :")
     for strategy_result in strategy_results:
         print(
         f"  {strategy_result['strategy']} -> "
-        f"{strategy_result['signal']}"
+        f"{strategy_result['signal']} "
+        f"(Confidence: {strategy_result['confidence']:.2f})"
     )
+        print(f"    Reason: {strategy_result['reason']}")
     print(f"Score       : {score:.2f}")
     print(f"P/L         : £{backtest_result['profit_loss']:.2f}")
     print(f"Return      : {backtest_result['return_percent']:.2f}%")

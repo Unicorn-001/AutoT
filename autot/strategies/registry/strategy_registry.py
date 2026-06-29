@@ -10,6 +10,7 @@ from autot.config.strategy_settings import ENABLED_STRATEGIES
 from autot.strategies.ema_rsi_strategy_class import EmaRsiStrategy
 from autot.strategies.macd_strategy_class import MacdStrategy
 from autot.strategies.bollinger_strategy_class import BollingerStrategy
+from autot.strategies.breakout_strategy_class import BreakoutStrategy
 
 class StrategyRegistry:
     """
@@ -26,7 +27,9 @@ class StrategyRegistry:
             self._strategies.append(MacdStrategy())
         if ENABLED_STRATEGIES.get("BOLLINGER", False):
             self._strategies.append(BollingerStrategy())
-            
+        if ENABLED_STRATEGIES.get("BREAKOUT", False):
+            self._strategies.append(BreakoutStrategy())
+
     def get_all(self):
         """
         Return all registered strategies.

@@ -17,12 +17,16 @@ class StrategyInterface(ABC):
     """
 
     @abstractmethod
-    def generate_signal(self, data: pd.DataFrame) -> str:
+    def generate_signal(self, data: pd.DataFrame) -> dict:
         """
-        Generate trading signal.
+        Generate structured strategy result.
 
         Returns:
-            BUY, SELL, or HOLD
+            {
+                "signal": "BUY/SELL/HOLD",
+                "reason": "...",
+                "confidence": 0.0 to 1.0,
+            }
         """
         pass
 

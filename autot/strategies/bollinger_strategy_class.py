@@ -14,16 +14,15 @@ from autot.strategies.base.strategy_interface import StrategyInterface
 class BollingerStrategy(StrategyInterface):
     """
     Bollinger Bands strategy.
-
-    Logic:
-        BUY  when close <= lower band
-        SELL when close >= upper band
-        HOLD otherwise
     """
 
-    def generate_signal(self, data: pd.DataFrame) -> str:
+    def generate_signal(self, data: pd.DataFrame) -> dict:
         if data.empty:
-            return "HOLD"
+            return {
+                "signal": "HOLD",
+                "reason": "No data available.",
+                "confidence": 0.0,
+            }
 
         latest_row = data.iloc[-1]
 
@@ -32,12 +31,33 @@ class BollingerStrategy(StrategyInterface):
         lower_band = latest_row[("BB_LOWER", "")]
 
         if close <= lower_band:
-            return "BUY"
+            return {
+                "signal": "BUY",
+                "reason": (
+                    f"Close {close:.2f} is at or below lower Bollinger Band "
+                    f"{lower_band:.2f}."
+                ),
+                "confidence": 0.65,
+            }
 
         if close >= upper_band:
-            return "SELL"
+            return {
+                "signal": "SELL",
+                "reason": (
+                    f"Close {close:.2f} is at or above upper Bollinger Band "
+                    f"{upper_band:.2f}."
+                ),
+                "confidence": 0.65,
+            }
 
-        return "HOLD"
+        return {
+            "signal": "HOLD",
+            "reason": (
+                f"Close {close:.2f} is between Bollinger Bands "
+                f"{lower_band:.2f} and {upper_band:.2f}."
+            ),
+            "confidence": 0.5,
+        }
 
     def get_name(self) -> str:
         return "Bollinger_Strategy"

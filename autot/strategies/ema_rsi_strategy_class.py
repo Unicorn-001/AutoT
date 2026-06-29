@@ -14,37 +14,50 @@ from autot.strategies.base.strategy_interface import StrategyInterface
 class EmaRsiStrategy(StrategyInterface):
     """
     EMA + RSI trading strategy.
-
-    Logic:
-        BUY  when EMA20 > EMA50 and RSI > 50
-        SELL when EMA20 < EMA50 or RSI < 45
-        HOLD otherwise
     """
 
-    def generate_signal(self, data: pd.DataFrame) -> str:
-        """
-        Generate BUY, SELL, or HOLD signal.
-        """
-
+    def generate_signal(self, data: pd.DataFrame) -> dict:
         if data.empty:
-            return "HOLD"
+            return {
+                "signal": "HOLD",
+                "reason": "No data available.",
+                "confidence": 0.0,
+            }
 
         latest_row = data.iloc[-1]
 
         ema_20 = latest_row[("EMA_20", "")]
         ema_50 = latest_row[("EMA_50", "")]
         rsi = latest_row[("RSI", "")]
+
         if ema_20 > ema_50 and rsi > 50:
-            return "BUY"
+            return {
+                "signal": "BUY",
+                "reason": (
+                    f"EMA20 {ema_20:.2f} is above EMA50 {ema_50:.2f} "
+                    f"and RSI {rsi:.2f} is above 50."
+                ),
+                "confidence": 0.75,
+            }
 
         if ema_20 < ema_50 or rsi < 45:
-            return "SELL"
+            return {
+                "signal": "SELL",
+                "reason": (
+                    f"EMA20 {ema_20:.2f}, EMA50 {ema_50:.2f}, "
+                    f"RSI {rsi:.2f}. Bearish EMA or weak RSI condition."
+                ),
+                "confidence": 0.75,
+            }
 
-        return "HOLD"
+        return {
+            "signal": "HOLD",
+            "reason": (
+                f"EMA20 {ema_20:.2f}, EMA50 {ema_50:.2f}, "
+                f"RSI {rsi:.2f}. No clear EMA/RSI signal."
+            ),
+            "confidence": 0.5,
+        }
 
     def get_name(self) -> str:
-        """
-        Return strategy name.
-        """
-
         return "EMA_RSI_Strategy"

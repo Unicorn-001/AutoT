@@ -14,20 +14,15 @@ from autot.strategies.base.strategy_interface import StrategyInterface
 class MacdStrategy(StrategyInterface):
     """
     MACD trading strategy.
-
-    Logic:
-        BUY  when MACD > Signal Line
-        SELL when MACD < Signal Line
-        HOLD otherwise
     """
 
-    def generate_signal(self, data: pd.DataFrame) -> str:
-        """
-        Generate BUY, SELL, or HOLD signal.
-        """
-
+    def generate_signal(self, data: pd.DataFrame) -> dict:
         if data.empty:
-            return "HOLD"
+            return {
+                "signal": "HOLD",
+                "reason": "No data available.",
+                "confidence": 0.0,
+            }
 
         latest_row = data.iloc[-1]
 
@@ -35,16 +30,33 @@ class MacdStrategy(StrategyInterface):
         macd_signal = latest_row[("MACD_SIGNAL", "")]
 
         if macd > macd_signal:
-            return "BUY"
+            return {
+                "signal": "BUY",
+                "reason": (
+                    f"MACD {macd:.2f} is above signal line "
+                    f"{macd_signal:.2f}."
+                ),
+                "confidence": 0.7,
+            }
 
         if macd < macd_signal:
-            return "SELL"
+            return {
+                "signal": "SELL",
+                "reason": (
+                    f"MACD {macd:.2f} is below signal line "
+                    f"{macd_signal:.2f}."
+                ),
+                "confidence": 0.7,
+            }
 
-        return "HOLD"
+        return {
+            "signal": "HOLD",
+            "reason": (
+                f"MACD {macd:.2f} is equal to signal line "
+                f"{macd_signal:.2f}."
+            ),
+            "confidence": 0.5,
+        }
 
     def get_name(self) -> str:
-        """
-        Return strategy name.
-        """
-
         return "MACD_Strategy"
