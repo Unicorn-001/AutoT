@@ -12,4 +12,5 @@ ENABLED_STRATEGIES = {
     "MACD": True,
     "BOLLINGER": True,
     "BREAKOUT": True,
+    "SUPERTREND": True,
 }

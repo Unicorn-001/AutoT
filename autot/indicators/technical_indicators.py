@@ -66,10 +66,52 @@ def add_bollinger_bands(
     data["BB_LOWER"] = middle_band - (std_dev * num_std)
 
     return data
+def add_supertrend(
+    data: pd.DataFrame,
+    period: int = 10,
+    multiplier: float = 3.0,
+) -> pd.DataFrame:
+    data = data.copy()
 
+    high = data["High"]
+    low = data["Low"]
+    close = data["Close"]
+
+    if isinstance(high, pd.DataFrame):
+        high = high.iloc[:, 0]
+
+    if isinstance(low, pd.DataFrame):
+        low = low.iloc[:, 0]
+
+    if isinstance(close, pd.DataFrame):
+        close = close.iloc[:, 0]
+
+    previous_close = close.shift(1)
+
+    true_range = pd.concat(
+        [
+            high - low,
+            (high - previous_close).abs(),
+            (low - previous_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+
+    atr = true_range.rolling(window=period).mean()
+
+    hl2 = (high + low) / 2
+    upper_band = hl2 + (multiplier * atr)
+    lower_band = hl2 - (multiplier * atr)
+
+    data["SUPERTREND_UPPER"] = upper_band
+    data["SUPERTREND_LOWER"] = lower_band
+    data["SUPERTREND_DIRECTION"] = close > lower_band
+
+    return data
 def add_all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data = add_ema(data)
     data = add_rsi(data)
     data = add_macd(data)
     data = add_bollinger_bands(data)
+    data = add_supertrend(data)
     return data
