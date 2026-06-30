@@ -49,6 +49,9 @@ def analyse_stock(symbol: str) -> dict:
     print(f"Buy Votes   : {consensus['buy_votes']}")
     print(f"Sell Votes  : {consensus['sell_votes']}")
     print(f"Hold Votes  : {consensus['hold_votes']}")
+    print(f"Buy Score   : {consensus['buy_score']}")
+    print(f"Sell Score  : {consensus['sell_score']}")
+    print(f"Hold Score  : {consensus['hold_score']}")
     print("Strategies  :")
     for strategy_result in strategy_results:
         print(
