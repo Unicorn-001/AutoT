@@ -79,9 +79,9 @@ def analyse_stock(symbol: str) -> dict:
         "buy_votes": consensus["buy_votes"],
         "sell_votes": consensus["sell_votes"],
         "hold_votes": consensus["hold_votes"],
-        "buy_votes": consensus["buy_votes"],
-        "sell_votes": consensus["sell_votes"],
-        "hold_votes": consensus["hold_votes"],
+        "buy_score": consensus["buy_score"],
+        "sell_score": consensus["sell_score"],
+        "hold_score": consensus["hold_score"],
         "ema_rsi_signal": strategy_signal_map.get("EMA_RSI_Strategy", "N/A"),
         "macd_signal": strategy_signal_map.get("MACD_Strategy", "N/A"),
     }
@@ -99,6 +99,9 @@ def save_results_to_csv(
         "return_percent",
         "max_drawdown",
         "win_rate",
+        "buy_score",
+        "sell_score",
+        "hold_score",
     ]
 
     df[numeric_columns] = df[numeric_columns].round(2)
