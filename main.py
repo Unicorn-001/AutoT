@@ -9,10 +9,11 @@ from autot.config.settings import (
     TOP_N_STOCKS,
 )
 from autot.data.market_data import download_stock_data
+from autot.decision.trade_decision_builder import TradeDecisionBuilder
 from autot.indicators.technical_indicators import add_all_indicators
 from autot.ranking.ranking_engine import calculate_stock_score
-from autot.strategies.manager.strategy_manager import StrategyManager
 from autot.strategies.manager.strategy_consensus import calculate_consensus_signal
+from autot.strategies.manager.strategy_manager import StrategyManager
 from autot.universe.universe_loader import load_universe
 
 
@@ -28,11 +29,19 @@ def analyse_stock(symbol: str) -> dict:
     strategy_manager = StrategyManager()
     strategy_results = strategy_manager.run_all(data)
     consensus = calculate_consensus_signal(strategy_results)
-    signal = consensus["final_signal"]
+
+    decision = TradeDecisionBuilder.build(
+        symbol=symbol,
+        data=data,
+        consensus=consensus,
+    )
+
+    signal = decision.final_signal
+
     strategy_signal_map = {
-    result["strategy"]: result["signal"]
-    for result in strategy_results
-}
+        result["strategy"]: result["signal"]
+        for result in strategy_results
+    }
 
     backtest_result = run_backtest(data)
 
@@ -45,21 +54,25 @@ def analyse_stock(symbol: str) -> dict:
 
     print("--------------------------------")
     print(f"Stock       : {symbol}")
-    print(f"Signal      : {signal}")
+    print(f"Signal      : {decision.final_signal}")
     print(f"Buy Votes   : {consensus['buy_votes']}")
     print(f"Sell Votes  : {consensus['sell_votes']}")
     print(f"Hold Votes  : {consensus['hold_votes']}")
-    print(f"Buy Score   : {consensus['buy_score']}")
-    print(f"Sell Score  : {consensus['sell_score']}")
-    print(f"Hold Score  : {consensus['hold_score']}")
+    print(f"Buy Score   : {decision.buy_score}")
+    print(f"Sell Score  : {decision.sell_score}")
+    print(f"Hold Score  : {decision.hold_score}")
+    print(f"Entry Price : £{decision.entry_price:.2f}")
+    print(f"Decision    : {decision.decision_reason}")
+
     print("Strategies  :")
     for strategy_result in strategy_results:
         print(
-        f"  {strategy_result['strategy']} -> "
-        f"{strategy_result['signal']} "
-        f"(Confidence: {strategy_result['confidence']:.2f})"
-    )
+            f"  {strategy_result['strategy']} -> "
+            f"{strategy_result['signal']} "
+            f"(Confidence: {strategy_result['confidence']:.2f})"
+        )
         print(f"    Reason: {strategy_result['reason']}")
+
     print(f"Score       : {score:.2f}")
     print(f"P/L         : £{backtest_result['profit_loss']:.2f}")
     print(f"Return      : {backtest_result['return_percent']:.2f}%")
@@ -79,11 +92,16 @@ def analyse_stock(symbol: str) -> dict:
         "buy_votes": consensus["buy_votes"],
         "sell_votes": consensus["sell_votes"],
         "hold_votes": consensus["hold_votes"],
-        "buy_score": consensus["buy_score"],
-        "sell_score": consensus["sell_score"],
-        "hold_score": consensus["hold_score"],
+        "buy_score": decision.buy_score,
+        "sell_score": decision.sell_score,
+        "hold_score": decision.hold_score,
+        "entry_price": decision.entry_price,
+        "decision_reason": decision.decision_reason,
         "ema_rsi_signal": strategy_signal_map.get("EMA_RSI_Strategy", "N/A"),
         "macd_signal": strategy_signal_map.get("MACD_Strategy", "N/A"),
+        "bollinger_signal": strategy_signal_map.get("Bollinger_Strategy", "N/A"),
+        "breakout_signal": strategy_signal_map.get("Breakout_Strategy", "N/A"),
+        "supertrend_signal": strategy_signal_map.get("SuperTrend_Strategy", "N/A"),
     }
 
 
@@ -102,6 +120,7 @@ def save_results_to_csv(
         "buy_score",
         "sell_score",
         "hold_score",
+        "entry_price",
     ]
 
     df[numeric_columns] = df[numeric_columns].round(2)
@@ -142,7 +161,6 @@ def main() -> None:
             f"Win Rate: {result['win_rate']:.2f}% | "
             f"Trades: {result['total_trades']} | "
             f"Signal: {result['signal']}"
-            
         )
 
     print("======================================")
@@ -167,10 +185,12 @@ def main() -> None:
         top_results,
         "data_storage/processed/top_shortlist.csv",
     )
+
     end_time = time.time()
     total_time = end_time - start_time
 
     print(f"\nExecution time: {total_time:.2f} seconds")
+
 
 if __name__ == "__main__":
     main()
