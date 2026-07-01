@@ -130,7 +130,7 @@ def save_results_to_csv(
         "stop_loss",
         "take_profit",
         "risk_reward_ratio",
-    ]
+        ]
 
     df[numeric_columns] = df[numeric_columns].round(2)
     df.to_csv(file_path, index=False)
