@@ -62,6 +62,9 @@ def analyse_stock(symbol: str) -> dict:
     print(f"Sell Score  : {decision.sell_score}")
     print(f"Hold Score  : {decision.hold_score}")
     print(f"Entry Price : £{decision.entry_price:.2f}")
+    print(f"Stop Loss   : £{decision.stop_loss:.2f}")
+    print(f"Take Profit : £{decision.take_profit:.2f}")
+    print(f"Risk/Reward : {decision.risk_reward_ratio:.2f}")    
     print(f"Decision    : {decision.decision_reason}")
 
     print("Strategies  :")
@@ -102,6 +105,9 @@ def analyse_stock(symbol: str) -> dict:
         "bollinger_signal": strategy_signal_map.get("Bollinger_Strategy", "N/A"),
         "breakout_signal": strategy_signal_map.get("Breakout_Strategy", "N/A"),
         "supertrend_signal": strategy_signal_map.get("SuperTrend_Strategy", "N/A"),
+        "stop_loss": decision.stop_loss,
+        "take_profit": decision.take_profit,
+        "risk_reward_ratio": decision.risk_reward_ratio,
     }
 
 
@@ -121,6 +127,9 @@ def save_results_to_csv(
         "sell_score",
         "hold_score",
         "entry_price",
+        "stop_loss",
+        "take_profit",
+        "risk_reward_ratio",
     ]
 
     df[numeric_columns] = df[numeric_columns].round(2)

@@ -23,6 +23,10 @@ class TradeDecisionBuilder:
         latest = data.iloc[-1]
 
         entry_price = latest[("Close", data.columns[0][1])]
+        # Default risk management (2% Stop Loss, 4% Take Profit)
+        stop_loss = entry_price * 0.98
+        take_profit = entry_price * 1.04
+        risk_reward_ratio = 2.0
 
         reason = (
             f"BUY Score={consensus['buy_score']}, "
@@ -37,5 +41,9 @@ class TradeDecisionBuilder:
             sell_score=consensus["sell_score"],
             hold_score=consensus["hold_score"],
             entry_price=float(entry_price),
+            stop_loss=float(stop_loss),
+            take_profit=float(take_profit),
+            risk_reward_ratio=risk_reward_ratio,
             decision_reason=reason,
         )
+        

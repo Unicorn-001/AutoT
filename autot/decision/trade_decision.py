@@ -21,4 +21,7 @@ class TradeDecision:
     sell_score: float
     hold_score: float
     entry_price: float
+    stop_loss: float
+    take_profit: float
+    risk_reward_ratio: float
     decision_reason: str
