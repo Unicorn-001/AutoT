@@ -64,7 +64,10 @@ def analyse_stock(symbol: str) -> dict:
     print(f"Entry Price : £{decision.entry_price:.2f}")
     print(f"Stop Loss   : £{decision.stop_loss:.2f}")
     print(f"Take Profit : £{decision.take_profit:.2f}")
-    print(f"Risk/Reward : {decision.risk_reward_ratio:.2f}")    
+    print(f"Risk/Reward : {decision.risk_reward_ratio:.2f}")
+    print(f"Quantity    : {decision.position_size.quantity}")
+    print(f"Position Val: £{decision.position_size.position_value:.2f}")
+    print(f"Max Loss    : £{decision.position_size.max_loss:.2f}")    
     print(f"Decision    : {decision.decision_reason}")
 
     print("Strategies  :")
@@ -108,6 +111,9 @@ def analyse_stock(symbol: str) -> dict:
         "stop_loss": decision.stop_loss,
         "take_profit": decision.take_profit,
         "risk_reward_ratio": decision.risk_reward_ratio,
+        "quantity": decision.position_size.quantity,
+        "position_value": decision.position_size.position_value,
+        "max_loss": decision.position_size.max_loss,
     }
 
 
@@ -130,6 +136,8 @@ def save_results_to_csv(
         "stop_loss",
         "take_profit",
         "risk_reward_ratio",
+        "position_value",
+        "max_loss",
         ]
 
     df[numeric_columns] = df[numeric_columns].round(2)

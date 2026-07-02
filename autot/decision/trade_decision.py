@@ -7,6 +7,7 @@ Purpose:
 """
 
 from dataclasses import dataclass
+from autot.position.position_size import PositionSize
 
 
 @dataclass
@@ -25,3 +26,4 @@ class TradeDecision:
     take_profit: float
     risk_reward_ratio: float
     decision_reason: str
+    position_size: PositionSize
