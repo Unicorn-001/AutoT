@@ -15,6 +15,7 @@ from autot.strategies.supertrend_strategy_class import SuperTrendStrategy
 from autot.strategies.adx_strategy_class import AdxStrategy
 from autot.strategies.volume_spike_strategy_class import VolumeSpikeStrategy
 from autot.strategies.momentum_strategy_class import MomentumStrategy
+from autot.strategies.atr_strategy_class import AtrStrategy
 
 
 class StrategyRegistry:
@@ -42,6 +43,8 @@ class StrategyRegistry:
             self._strategies.append(VolumeSpikeStrategy())
         if ENABLED_STRATEGIES.get("MOMENTUM", False):
             self._strategies.append(MomentumStrategy())
+        if ENABLED_STRATEGIES.get("ATR", False):
+            self._strategies.append(AtrStrategy())
 
     def get_all(self):
         """

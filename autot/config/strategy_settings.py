@@ -16,4 +16,5 @@ ENABLED_STRATEGIES = {
     "ADX": True,
     "VOLUME_SPIKE": True,
     "MOMENTUM": True,
+    "ATR": True,
 }

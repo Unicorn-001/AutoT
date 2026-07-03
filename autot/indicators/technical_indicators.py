@@ -1,6 +1,7 @@
 import pandas as pd
 from ta.momentum import RSIIndicator
 from ta.trend import ADXIndicator
+from ta.volatility import AverageTrueRange
 
 
 def get_close_series(data: pd.DataFrame) -> pd.Series:
@@ -171,6 +172,37 @@ def add_momentum(
 
     return data
 
+def add_atr(
+    data: pd.DataFrame,
+    window: int = 14,
+) -> pd.DataFrame:
+
+    data = data.copy()
+
+    high = data["High"]
+    low = data["Low"]
+    close = data["Close"]
+
+    if isinstance(high, pd.DataFrame):
+        high = high.iloc[:, 0]
+
+    if isinstance(low, pd.DataFrame):
+        low = low.iloc[:, 0]
+
+    if isinstance(close, pd.DataFrame):
+        close = close.iloc[:, 0]
+
+    atr = AverageTrueRange(
+        high=high,
+        low=low,
+        close=close,
+        window=window,
+    )
+
+    data["ATR"] = atr.average_true_range()
+
+    return data
+    
 def add_all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data = add_ema(data)
     data = add_rsi(data)
@@ -180,4 +212,5 @@ def add_all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data = add_adx(data)
     data = add_volume_indicators(data)
     data = add_momentum(data)
+    data = add_atr(data)
     return data
