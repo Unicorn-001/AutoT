@@ -16,6 +16,7 @@ from autot.strategies.adx_strategy_class import AdxStrategy
 from autot.strategies.volume_spike_strategy_class import VolumeSpikeStrategy
 from autot.strategies.momentum_strategy_class import MomentumStrategy
 from autot.strategies.atr_strategy_class import AtrStrategy
+from autot.strategies.stochastic_strategy_class import StochasticStrategy
 
 
 class StrategyRegistry:
@@ -45,6 +46,8 @@ class StrategyRegistry:
             self._strategies.append(MomentumStrategy())
         if ENABLED_STRATEGIES.get("ATR", False):
             self._strategies.append(AtrStrategy())
+        if ENABLED_STRATEGIES.get("STOCHASTIC", False):
+            self._strategies.append(StochasticStrategy())
 
     def get_all(self):
         """

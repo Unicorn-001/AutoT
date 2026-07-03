@@ -17,4 +17,5 @@ ENABLED_STRATEGIES = {
     "VOLUME_SPIKE": True,
     "MOMENTUM": True,
     "ATR": True,
+    "STOCHASTIC": True,
 }
