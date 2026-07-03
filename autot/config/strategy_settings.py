@@ -15,4 +15,5 @@ ENABLED_STRATEGIES = {
     "SUPERTREND": True,
     "ADX": True,
     "VOLUME_SPIKE": True,
+    "MOMENTUM": True,
 }

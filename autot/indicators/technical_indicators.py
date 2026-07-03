@@ -159,6 +159,18 @@ def add_volume_indicators(
 
     return data
 
+def add_momentum(
+    data: pd.DataFrame,
+    period: int = 10,
+) -> pd.DataFrame:
+    data = data.copy()
+
+    close = get_close_series(data)
+
+    data["MOMENTUM"] = close - close.shift(period)
+
+    return data
+
 def add_all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data = add_ema(data)
     data = add_rsi(data)
@@ -167,4 +179,5 @@ def add_all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data = add_supertrend(data)
     data = add_adx(data)
     data = add_volume_indicators(data)
+    data = add_momentum(data)
     return data
