@@ -143,6 +143,21 @@ def add_adx(data: pd.DataFrame, window: int = 14) -> pd.DataFrame:
 
     return data
 
+def add_volume_indicators(
+    data: pd.DataFrame,
+    window: int = 20,
+) -> pd.DataFrame:
+    data = data.copy()
+
+    volume = data["Volume"]
+
+    if isinstance(volume, pd.DataFrame):
+        volume = volume.iloc[:, 0]
+
+    data["VOLUME_AVG"] = volume.rolling(window=window).mean()
+    data["VOLUME_RATIO"] = volume / data["VOLUME_AVG"]
+
+    return data
 
 def add_all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data = add_ema(data)
@@ -151,5 +166,5 @@ def add_all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data = add_bollinger_bands(data)
     data = add_supertrend(data)
     data = add_adx(data)
-
+    data = add_volume_indicators(data)
     return data

@@ -13,6 +13,7 @@ from autot.strategies.bollinger_strategy_class import BollingerStrategy
 from autot.strategies.breakout_strategy_class import BreakoutStrategy
 from autot.strategies.supertrend_strategy_class import SuperTrendStrategy
 from autot.strategies.adx_strategy_class import AdxStrategy
+from autot.strategies.volume_spike_strategy_class import VolumeSpikeStrategy
 
 
 class StrategyRegistry:
@@ -36,6 +37,8 @@ class StrategyRegistry:
             self._strategies.append(SuperTrendStrategy())
         if ENABLED_STRATEGIES.get("ADX", False):
             self._strategies.append(AdxStrategy())
+        if ENABLED_STRATEGIES.get("VOLUME_SPIKE", False):
+            self._strategies.append(VolumeSpikeStrategy())
 
     def get_all(self):
         """

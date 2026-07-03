@@ -14,4 +14,5 @@ ENABLED_STRATEGIES = {
     "BREAKOUT": True,
     "SUPERTREND": True,
     "ADX": True,
+    "VOLUME_SPIKE": True,
 }
