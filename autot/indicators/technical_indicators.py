@@ -1,5 +1,6 @@
 import pandas as pd
 from ta.momentum import RSIIndicator
+from ta.trend import ADXIndicator
 
 
 def get_close_series(data: pd.DataFrame) -> pd.Series:
@@ -50,6 +51,7 @@ def add_macd(data: pd.DataFrame) -> pd.DataFrame:
 
     return data
 
+
 def add_bollinger_bands(
     data: pd.DataFrame,
     window: int = 20,
@@ -66,6 +68,8 @@ def add_bollinger_bands(
     data["BB_LOWER"] = middle_band - (std_dev * num_std)
 
     return data
+
+
 def add_supertrend(
     data: pd.DataFrame,
     period: int = 10,
@@ -108,10 +112,44 @@ def add_supertrend(
     data["SUPERTREND_DIRECTION"] = close > lower_band
 
     return data
+
+
+def add_adx(data: pd.DataFrame, window: int = 14) -> pd.DataFrame:
+    data = data.copy()
+
+    high = data["High"]
+    low = data["Low"]
+    close = data["Close"]
+
+    if isinstance(high, pd.DataFrame):
+        high = high.iloc[:, 0]
+
+    if isinstance(low, pd.DataFrame):
+        low = low.iloc[:, 0]
+
+    if isinstance(close, pd.DataFrame):
+        close = close.iloc[:, 0]
+
+    adx_indicator = ADXIndicator(
+        high=high,
+        low=low,
+        close=close,
+        window=window,
+    )
+
+    data["ADX"] = adx_indicator.adx()
+    data["DI_PLUS"] = adx_indicator.adx_pos()
+    data["DI_MINUS"] = adx_indicator.adx_neg()
+
+    return data
+
+
 def add_all_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data = add_ema(data)
     data = add_rsi(data)
     data = add_macd(data)
     data = add_bollinger_bands(data)
     data = add_supertrend(data)
+    data = add_adx(data)
+
     return data

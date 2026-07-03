@@ -13,4 +13,5 @@ ENABLED_STRATEGIES = {
     "BOLLINGER": True,
     "BREAKOUT": True,
     "SUPERTREND": True,
+    "ADX": True,
 }
