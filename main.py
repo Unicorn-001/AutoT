@@ -1,6 +1,8 @@
 import pandas as pd
 import time
 
+from yfinance import data
+
 from autot.backtest.backtester import run_backtest
 from autot.config.settings import (
     ACTIVE_UNIVERSE_FILE,
@@ -15,7 +17,8 @@ from autot.ranking.ranking_engine import calculate_stock_score
 from autot.strategies.manager.strategy_consensus import calculate_consensus_signal
 from autot.strategies.manager.strategy_manager import StrategyManager
 from autot.universe.universe_loader import load_universe
-
+from autot.market_regime.market_regime_detector import MarketRegimeDetector
+from autot.strategy_weights.strategy_weight_engine import StrategyWeightEngine
 
 def analyse_stock(symbol: str) -> dict:
     data = download_stock_data(
@@ -28,8 +31,17 @@ def analyse_stock(symbol: str) -> dict:
 
     strategy_manager = StrategyManager()
     strategy_results = strategy_manager.run_all(data)
-    consensus = calculate_consensus_signal(strategy_results)
 
+    regime = MarketRegimeDetector.detect(data)
+
+    weighted_strategy_results = StrategyWeightEngine.apply_weights(
+        strategy_results,
+        regime["regime"],
+)
+
+    consensus = calculate_consensus_signal(weighted_strategy_results)
+    strategy_results = weighted_strategy_results
+    
     decision = TradeDecisionBuilder.build(
         symbol=symbol,
         data=data,
