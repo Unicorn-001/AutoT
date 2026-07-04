@@ -16,6 +16,8 @@ from autot.config.trading_settings import (
     DEFAULT_TAKE_PROFIT_PERCENT,
     RISK_PER_TRADE,
 )
+from autot.decision_engine.decision_engine import DecisionEngine
+
 
 
 class TradeDecisionBuilder:
@@ -40,16 +42,15 @@ class TradeDecisionBuilder:
             risk_percent=RISK_PER_TRADE,
             entry_price=float(entry_price),
             stop_loss=float(stop_loss),
-)
-        reason = (
-            f"BUY Score={consensus['buy_score']}, "
-            f"SELL Score={consensus['sell_score']}, "
-            f"HOLD Score={consensus['hold_score']}"
         )
+        decision = DecisionEngine.decide(consensus)
+
+        decision_reason = decision["decision_reason"]
 
         return TradeDecision(
             symbol=symbol,
-            final_signal=consensus["final_signal"],
+            final_signal=decision["final_signal"],
+            confidence=decision["confidence"],
             buy_score=consensus["buy_score"],
             sell_score=consensus["sell_score"],
             hold_score=consensus["hold_score"],
@@ -57,7 +58,7 @@ class TradeDecisionBuilder:
             stop_loss=float(stop_loss),
             take_profit=float(take_profit),
             risk_reward_ratio=risk_reward_ratio,
-            decision_reason=reason,
+            decision_reason=decision_reason,
             position_size=position_size,
         )
         

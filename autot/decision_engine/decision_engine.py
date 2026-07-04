@@ -6,6 +6,8 @@ Purpose:
     Central decision engine for final BUY / SELL / HOLD decisions.
 """
 
+from autot.config.trading_settings import MIN_CONFIDENCE
+
 
 class DecisionEngine:
     """
@@ -14,16 +16,37 @@ class DecisionEngine:
 
     @staticmethod
     def decide(consensus: dict) -> dict:
+        buy = consensus["buy_score"]
+        sell = consensus["sell_score"]
+        hold = consensus["hold_score"]
+
+        total = buy + sell + hold
+
+        if total == 0:
+            confidence = 0.0
+        else:
+            confidence = max(buy, sell, hold) / total
+
+        confidence_percent = round(confidence * 100, 2)
         final_signal = consensus["final_signal"]
 
-        reason = (
-            f"Final signal is {final_signal}. "
-            f"BUY Score={consensus['buy_score']}, "
-            f"SELL Score={consensus['sell_score']}, "
-            f"HOLD Score={consensus['hold_score']}."
-        )
+        if final_signal in ["BUY", "SELL"] and confidence_percent < MIN_CONFIDENCE:
+            final_signal = "HOLD"
+            reason = (
+                f"Signal changed to HOLD because confidence "
+                f"{confidence_percent}% is below minimum threshold "
+                f"{MIN_CONFIDENCE}%."
+            )
+        else:
+            reason = (
+                f"Final signal is {final_signal}. "
+                f"BUY Score={buy}, "
+                f"SELL Score={sell}, "
+                f"HOLD Score={hold}."
+            )
 
         return {
             "final_signal": final_signal,
             "decision_reason": reason,
+            "confidence": confidence_percent,
         }

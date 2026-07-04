@@ -55,6 +55,7 @@ def analyse_stock(symbol: str) -> dict:
     print("--------------------------------")
     print(f"Stock       : {symbol}")
     print(f"Signal      : {decision.final_signal}")
+    print(f"Confidence  : {decision.confidence:.2f}%")
     print(f"Buy Votes   : {consensus['buy_votes']}")
     print(f"Sell Votes  : {consensus['sell_votes']}")
     print(f"Hold Votes  : {consensus['hold_votes']}")
