@@ -17,6 +17,7 @@ from autot.config.trading_settings import (
     RISK_PER_TRADE,
 )
 from autot.decision_engine.decision_engine import DecisionEngine
+from autot.market_regime.market_regime_detector import MarketRegimeDetector
 
 
 
@@ -44,13 +45,15 @@ class TradeDecisionBuilder:
             stop_loss=float(stop_loss),
         )
         decision = DecisionEngine.decide(consensus)
-
         decision_reason = decision["decision_reason"]
+        regime = MarketRegimeDetector.detect(data)
 
         return TradeDecision(
             symbol=symbol,
             final_signal=decision["final_signal"],
             confidence=decision["confidence"],
+            agreement=decision["agreement"],
+            market_regime=regime["regime"],
             buy_score=consensus["buy_score"],
             sell_score=consensus["sell_score"],
             hold_score=consensus["hold_score"],
@@ -60,6 +63,5 @@ class TradeDecisionBuilder:
             risk_reward_ratio=risk_reward_ratio,
             decision_reason=decision_reason,
             position_size=position_size,
-            agreement=decision["agreement"]
         )
         

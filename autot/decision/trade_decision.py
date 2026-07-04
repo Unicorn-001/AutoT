@@ -19,6 +19,8 @@ class TradeDecision:
     symbol: str
     final_signal: str
     confidence: float
+    agreement: float
+    market_regime: str
     buy_score: float
     sell_score: float
     hold_score: float
@@ -28,5 +30,5 @@ class TradeDecision:
     risk_reward_ratio: float
     decision_reason: str
     position_size: PositionSize
-    agreement: float
+    
     

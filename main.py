@@ -71,7 +71,8 @@ def analyse_stock(symbol: str) -> dict:
     print(f"Max Loss    : £{decision.position_size.max_loss:.2f}")    
     print(f"Decision    : {decision.decision_reason}")
     print(f"Agreement   : {decision.agreement:.2f}%")
-
+    print(f"Market Regime: {decision.market_regime}")
+    
     print("Strategies  :")
     for strategy_result in strategy_results:
         print(
