@@ -60,5 +60,6 @@ class TradeDecisionBuilder:
             risk_reward_ratio=risk_reward_ratio,
             decision_reason=decision_reason,
             position_size=position_size,
+            agreement=decision["agreement"]
         )
         

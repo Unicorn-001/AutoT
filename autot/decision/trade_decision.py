@@ -28,4 +28,5 @@ class TradeDecision:
     risk_reward_ratio: float
     decision_reason: str
     position_size: PositionSize
+    agreement: float
     

@@ -30,6 +30,19 @@ class DecisionEngine:
         confidence_percent = round(confidence * 100, 2)
         final_signal = consensus["final_signal"]
 
+        scores = [buy, sell, hold]
+        sorted_scores = sorted(scores, reverse=True)
+
+        highest_score = sorted_scores[0]
+        second_highest_score = sorted_scores[1]
+
+        if highest_score == 0:
+            agreement = 0.0
+        else:
+            agreement = ((highest_score - second_highest_score) / highest_score) * 100
+
+            agreement_percent = round(agreement, 2)
+
         if final_signal in ["BUY", "SELL"] and confidence_percent < MIN_CONFIDENCE:
             final_signal = "HOLD"
             reason = (
@@ -49,4 +62,5 @@ class DecisionEngine:
             "final_signal": final_signal,
             "decision_reason": reason,
             "confidence": confidence_percent,
+            "agreement": agreement_percent,
         }
