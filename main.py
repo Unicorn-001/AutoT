@@ -1,15 +1,10 @@
+from logging import config
+
 import pandas as pd
 import time
 
-from yfinance import data
-
 from autot.backtest.backtester import run_backtest
-from autot.config.settings import (
-    ACTIVE_UNIVERSE_FILE,
-    BACKTEST_INTERVAL,
-    BACKTEST_PERIOD,
-    TOP_N_STOCKS,
-)
+from autot.settings.configuration_manager import ConfigurationManager
 from autot.data.market_data import download_stock_data
 from autot.decision.trade_decision_builder import TradeDecisionBuilder
 from autot.indicators.technical_indicators import add_all_indicators
@@ -19,43 +14,57 @@ from autot.strategies.manager.strategy_manager import StrategyManager
 from autot.universe.universe_loader import load_universe
 from autot.market_regime.market_regime_detector import MarketRegimeDetector
 from autot.strategy_weights.strategy_weight_engine import StrategyWeightEngine
+from autot.performance.performance_tracker import PerformanceTracker
 
-def analyse_stock(symbol: str) -> dict:
+
+def analyse_stock(
+    symbol: str,
+    backtest_period: str,
+    backtest_interval: str,
+    tracker: PerformanceTracker,
+) -> dict:
+    tracker.start(f"{symbol}_download")
     data = download_stock_data(
         symbol,
-        period=BACKTEST_PERIOD,
-        interval=BACKTEST_INTERVAL,
+        period=backtest_period,
+        interval=backtest_interval,    
     )
 
-    data = add_all_indicators(data)
+    tracker.stop(f"{symbol}_download")
 
+    tracker.start(f"{symbol}_indicators")
+
+    data = add_all_indicators(data)
+    tracker.stop(f"{symbol}_indicators")
+
+    tracker.start(f"{symbol}_strategies")
     strategy_manager = StrategyManager()
     strategy_results = strategy_manager.run_all(data)
+    tracker.stop(f"{symbol}_strategies")
 
     regime = MarketRegimeDetector.detect(data)
 
     weighted_strategy_results = StrategyWeightEngine.apply_weights(
         strategy_results,
         regime["regime"],
-)
+    )
 
     consensus = calculate_consensus_signal(weighted_strategy_results)
     strategy_results = weighted_strategy_results
-    
+
     decision = TradeDecisionBuilder.build(
         symbol=symbol,
         data=data,
         consensus=consensus,
     )
 
-    signal = decision.final_signal
-
     strategy_signal_map = {
         result["strategy"]: result["signal"]
         for result in strategy_results
     }
-
+    tracker.start(f"{symbol}_backtest")
     backtest_result = run_backtest(data)
+    tracker.stop(f"{symbol}_backtest")
 
     score = calculate_stock_score(
         return_percent=backtest_result["return_percent"],
@@ -80,11 +89,11 @@ def analyse_stock(symbol: str) -> dict:
     print(f"Risk/Reward : {decision.risk_reward_ratio:.2f}")
     print(f"Quantity    : {decision.position_size.quantity}")
     print(f"Position Val: £{decision.position_size.position_value:.2f}")
-    print(f"Max Loss    : £{decision.position_size.max_loss:.2f}")    
+    print(f"Max Loss    : £{decision.position_size.max_loss:.2f}")
     print(f"Decision    : {decision.decision_reason}")
     print(f"Agreement   : {decision.agreement:.2f}%")
     print(f"Market Regime: {decision.market_regime}")
-    
+
     print("Strategies  :")
     for strategy_result in strategy_results:
         print(
@@ -103,7 +112,17 @@ def analyse_stock(symbol: str) -> dict:
 
     return {
         "symbol": symbol,
-        "signal": signal,
+        "signal": decision.final_signal,
+        "confidence": decision.confidence,
+        "agreement": decision.agreement,
+        "market_regime": decision.market_regime,
+        "entry_price": decision.entry_price,
+        "stop_loss": decision.stop_loss,
+        "take_profit": decision.take_profit,
+        "risk_reward_ratio": decision.risk_reward_ratio,
+        "quantity": decision.position_size.quantity,
+        "position_value": decision.position_size.position_value,
+        "max_loss": decision.position_size.max_loss,
         "score": score,
         "profit_loss": backtest_result["profit_loss"],
         "return_percent": backtest_result["return_percent"],
@@ -132,10 +151,7 @@ def analyse_stock(symbol: str) -> dict:
     }
 
 
-def save_results_to_csv(
-    results: list[dict],
-    file_path: str,
-) -> None:
+def save_results_to_csv(results: list[dict], file_path: str) -> None:
     df = pd.DataFrame(results)
 
     numeric_columns = [
@@ -153,7 +169,7 @@ def save_results_to_csv(
         "risk_reward_ratio",
         "position_value",
         "max_loss",
-        ]
+    ]
 
     df[numeric_columns] = df[numeric_columns].round(2)
     df.to_csv(file_path, index=False)
@@ -163,23 +179,67 @@ def save_results_to_csv(
 
 def main() -> None:
     start_time = time.time()
-    symbols = load_universe(ACTIVE_UNIVERSE_FILE)
+    tracker = PerformanceTracker()
+    config = ConfigurationManager()
+    symbols = load_universe(
+        config.get_string("ACTIVE_UNIVERSE")
+    )
     results = []
-
+    tracker.start("Analyse Stocks")
     for symbol in symbols:
         try:
-            result = analyse_stock(symbol)
+            result = analyse_stock(
+                symbol=symbol,
+                backtest_period=config.get_string("BACKTEST_PERIOD"),
+                backtest_interval=config.get_string("BACKTEST_INTERVAL"),
+                tracker=tracker,
+            )
             results.append(result)
         except Exception as error:
             print(f"Error analysing {symbol}: {error}")
 
+    tracker.stop("Analyse Stocks")
     ranked_results = sorted(
         results,
         key=lambda item: item["score"],
         reverse=True,
     )
+    for index, result in enumerate(ranked_results, start=1):
+        result["rank"] = index
+    top_n = config.get_int("TOP_N_STOCKS")
 
-    top_results = ranked_results[:TOP_N_STOCKS]
+    top_results = ranked_results[:top_n]
+    trade_opportunities = [
+        result for result in ranked_results
+        if result["signal"] in ["BUY", "SELL"]
+    ]
+
+    print("\n========== TODAY'S TRADE OPPORTUNITIES ==========")
+
+    if not trade_opportunities:
+        print("No actionable BUY or SELL opportunities today.")
+    else:
+        print(
+            "Rank | Symbol | Signal | Confidence | Agreement | "
+            "Regime | Entry | Stop Loss | Take Profit | Score"
+        )
+        print("-" * 120)
+
+        for index, result in enumerate(trade_opportunities, start=1):
+            print(
+                f"{index} | "
+                f"{result['symbol']} | "
+                f"{result['signal']} | "
+                f"{result['confidence']:.2f}% | "
+                f"{result['agreement']:.2f}% | "
+                f"{result['market_regime']} | "
+                f"{result['entry_price']:.2f} | "
+                f"{result['stop_loss']:.2f} | "
+                f"{result['take_profit']:.2f} | "
+                f"{result['score']:.2f}"
+            )
+
+    print("=================================================")
 
     print("\n========== BACKTEST RANKING ==========")
 
@@ -197,8 +257,7 @@ def main() -> None:
 
     print("======================================")
 
-    print(f"\n========== TOP {TOP_N_STOCKS} SHORTLIST ==========")
-
+    print(f"\n========== TOP {top_n} SHORTLIST ==========")
     for index, result in enumerate(top_results, start=1):
         print(
             f"{index}. {result['symbol']} | "
@@ -207,7 +266,7 @@ def main() -> None:
         )
 
     print("======================================")
-
+    tracker.start("Save Reports")
     save_results_to_csv(
         ranked_results,
         "data_storage/processed/backtest_results.csv",
@@ -217,9 +276,11 @@ def main() -> None:
         top_results,
         "data_storage/processed/top_shortlist.csv",
     )
-
+    tracker.stop("Save Reports")
     end_time = time.time()
     total_time = end_time - start_time
+
+    tracker.print_report()
 
     print(f"\nExecution time: {total_time:.2f} seconds")
 
