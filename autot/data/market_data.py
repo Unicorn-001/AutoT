@@ -52,7 +52,9 @@ def download_batch_stock_data(
     for symbol in symbols:
         try:
             symbol_data = data[symbol].dropna()
-
+            symbol_data.columns = pd.MultiIndex.from_product(
+                [symbol_data.columns, [symbol]]
+            )
             if not symbol_data.empty:
                 stock_data[symbol] = symbol_data
 
