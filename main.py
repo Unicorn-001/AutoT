@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
+from packaging import metadata
 import pandas as pd
 
 from autot.backtest.backtester import run_backtest
@@ -15,7 +16,11 @@ from autot.universe.universe_loader import load_universe
 from autot.market_regime.market_regime_detector import MarketRegimeDetector
 from autot.strategy_weights.strategy_weight_engine import StrategyWeightEngine
 from autot.performance.performance_tracker import PerformanceTracker
+from datetime import datetime
+import os
 
+def print_stage(message: str) -> None:
+    print(f"\n▶ {message}")
 
 def analyse_stock(
     symbol: str,
@@ -96,9 +101,10 @@ def analyse_stock(
     }
 
 
-def save_results_to_csv(results: list[dict], file_path: str) -> None:
+def save_results_to_csv(results: list[dict], file_path: str, metadata: dict) -> None:
     df = pd.DataFrame(results)
-
+    for key, value in metadata.items():
+        df.insert(0, key, value)
     column_order = [
         "rank",
         "symbol",
@@ -170,22 +176,35 @@ def save_results_to_csv(results: list[dict], file_path: str) -> None:
 
 def main() -> None:
     start_time = time.time()
+    print_stage("AutoT started")
 
     tracker = PerformanceTracker()
+    print_stage("Loading configuration")
     config = ConfigurationManager()
+    run_time = datetime.now()
+    metadata = {
+        "run_date": run_time.strftime("%Y-%m-%d"),
+        "run_time": run_time.strftime("%H:%M:%S"),
+        "universe": config.get_string("ACTIVE_UNIVERSE"),
+        "backtest_period": config.get_string("BACKTEST_PERIOD"),
+        "backtest_interval": config.get_string("BACKTEST_INTERVAL"),
+    }
 
+    print_stage("Loading universe")
     symbols = load_universe(
         config.get_string("ACTIVE_UNIVERSE")
     )
+    print(f"Loaded {len(symbols)} symbols")
 
     tracker.start("Batch Download")
+    print_stage("Loading market data from cache/download")
     batch_data = MarketDataManager.get_batch_stock_data(
         symbols=symbols,
         period=config.get_string("BACKTEST_PERIOD"),
         interval=config.get_string("BACKTEST_INTERVAL"),
     )
     tracker.stop("Batch Download")
-
+    print_stage("Loading market data from cache/download")
     results = []
     max_workers = 8
 
@@ -209,6 +228,7 @@ def main() -> None:
             try:
                 result = future.result()
                 results.append(result)
+                print(f"Completed {len(results)} / {len(symbols)}: {symbol}")
             except Exception as error:
                 print(f"Error analysing {symbol}: {error}")
 
@@ -219,7 +239,7 @@ def main() -> None:
         key=lambda item: item["score"],
         reverse=True,
     )
-
+    print_stage("Ranking results")
     for index, result in enumerate(ranked_results, start=1):
         result["rank"] = index
 
@@ -230,6 +250,8 @@ def main() -> None:
         result for result in ranked_results
         if result["signal"] in ["BUY", "SELL"]
     ]
+    for index, result in enumerate(trade_opportunities, start=1):
+        result["trade_rank"] = index
 
     print("\n========== TODAY'S SWING TRADE OPPORTUNITIES ==========")
 
@@ -268,26 +290,41 @@ def main() -> None:
         )
 
     print("======================================")
-
+    print_stage("Saving reports")
     tracker.start("Save Reports")
 
+    os.makedirs("data_storage/processed/history", exist_ok=True)
+
+    timestamp = run_time.strftime("%Y-%m-%d_%H%M%S")
+    
     save_results_to_csv(
         ranked_results,
-        "data_storage/processed/backtest_results.csv",
+        f"data_storage/processed/backtest_results_{timestamp}.csv",
+        metadata
+    )
+    save_results_to_csv(
+        top_results,
+        f"data_storage/processed/history/top_shortlist_{timestamp}.csv",
+        metadata
+    )
+    save_results_to_csv(
+        trade_opportunities,
+        "data_storage/processed/trade_opportunities.csv",
+        metadata,
     )
 
     save_results_to_csv(
-        top_results,
-        "data_storage/processed/top_shortlist.csv",
+        trade_opportunities,
+        f"data_storage/processed/history/trade_opportunities_{timestamp}.csv",
+        metadata,
     )
-
     tracker.stop("Save Reports")
 
     end_time = time.time()
     total_time = end_time - start_time
 
     tracker.print_report()
-
+    print_stage("AutoT completed")
     print(f"\nExecution time: {total_time:.2f} seconds")
 
 
