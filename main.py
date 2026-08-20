@@ -16,8 +16,15 @@ from autot.universe.universe_loader import load_universe
 from autot.market_regime.market_regime_detector import MarketRegimeDetector
 from autot.strategy_weights.strategy_weight_engine import StrategyWeightEngine
 from autot.performance.performance_tracker import PerformanceTracker
+from autot.trade_quality.trade_quality_engine import TradeQualityEngine
+from autot.trend_strength.trend_strength_engine import TrendStrengthEngine
+from autot.volume_strength.volume_strength_engine import VolumeStrengthEngine
+from autot.opportunity_ranking.opportunity_ranking_engine import (
+    OpportunityRankingEngine,
+)
 from datetime import datetime
 import os
+
 
 def print_stage(message: str) -> None:
     print(f"\n▶ {message}")
@@ -26,9 +33,11 @@ def analyse_stock(
     symbol: str,
     data: pd.DataFrame,
     tracker: PerformanceTracker,
-) -> dict:
+    ) -> dict:
     tracker.start(f"{symbol}_indicators")
     data = add_all_indicators(data)
+    trend_strength = TrendStrengthEngine.calculate(data)
+    volume_strength = VolumeStrengthEngine.calculate(data)
     tracker.stop(f"{symbol}_indicators")
 
     tracker.start(f"{symbol}_strategies")
@@ -66,6 +75,27 @@ def analyse_stock(
         win_rate=backtest_result["win_rate"],
         total_trades=backtest_result["total_trades"],
     )
+    volume_strength = VolumeStrengthEngine.calculate(data)
+
+    trade_quality = TradeQualityEngine.calculate(
+        signal=decision.final_signal,
+        confidence=decision.confidence,
+        agreement=decision.agreement,
+        score=score,
+        market_regime=decision.market_regime,
+        risk_reward_ratio=decision.risk_reward_ratio,
+        trend_strength_score=trend_strength["trend_strength_score"],
+    )
+
+    opportunity_score = OpportunityRankingEngine.calculate(
+        trade_quality_score=trade_quality["trade_quality_score"],
+        historical_score=score,
+        trend_strength_score=trend_strength["trend_strength_score"],
+        volume_strength_score=volume_strength["volume_strength_score"],
+        confidence=decision.confidence,
+        risk_reward_ratio=decision.risk_reward_ratio,
+    )
+
 
     return {
         "symbol": symbol,
@@ -98,6 +128,14 @@ def analyse_stock(
         "bollinger_signal": strategy_signal_map.get("Bollinger_Strategy", "N/A"),
         "breakout_signal": strategy_signal_map.get("Breakout_Strategy", "N/A"),
         "supertrend_signal": strategy_signal_map.get("SuperTrend_Strategy", "N/A"),
+        "trade_quality_score": trade_quality["trade_quality_score"],
+        "trade_quality_label": trade_quality["trade_quality_label"],
+        "volume_ratio": volume_strength["volume_ratio"],
+        "volume_strength_score": volume_strength["volume_strength_score"],
+        "volume_strength_label": volume_strength["volume_strength_label"],
+        "volume_confirmed": volume_strength["volume_confirmed"],
+        "stars": trade_quality["stars"],
+        "opportunity_score": opportunity_score,
     }
 
 
@@ -106,9 +144,14 @@ def save_results_to_csv(results: list[dict], file_path: str, metadata: dict) -> 
     for key, value in metadata.items():
         df.insert(0, key, value)
     column_order = [
+        "trade_rank",
         "rank",
         "symbol",
         "signal",
+        "opportunity_score",
+        "trade_quality_score",
+        "trade_quality_label",
+        "stars",
         "confidence",
         "agreement",
         "market_regime",
@@ -137,6 +180,10 @@ def save_results_to_csv(results: list[dict], file_path: str, metadata: dict) -> 
         "bollinger_signal",
         "breakout_signal",
         "supertrend_signal",
+        "volume_ratio",
+        "volume_strength_score",
+        "volume_strength_label",
+        "volume_confirmed",
     ]
 
     existing_columns = [
@@ -163,6 +210,9 @@ def save_results_to_csv(results: list[dict], file_path: str, metadata: dict) -> 
         "buy_score",
         "sell_score",
         "hold_score",
+        "trade_quality_score",
+        "volume_ratio",
+        "volume_strength_score",
     ]
 
     for column in numeric_columns:
@@ -247,9 +297,15 @@ def main() -> None:
     top_results = ranked_results[:top_n]
 
     trade_opportunities = [
-        result for result in ranked_results
+        result for result in results
         if result["signal"] in ["BUY", "SELL"]
+        and result["trade_quality_score"] >= 70
     ]
+    trade_opportunities = sorted(
+        trade_opportunities,
+        key=lambda item: item["opportunity_score"],
+        reverse=True,
+)
     for index, result in enumerate(trade_opportunities, start=1):
         result["trade_rank"] = index
 
@@ -259,7 +315,7 @@ def main() -> None:
         print("No actionable BUY or SELL opportunities today.")
     else:
         print(
-            "Rank | Symbol | Signal | Confidence | Agreement | "
+            "Rank | Symbol | Signal | Stars | Quality | Label | Confidence | Agreement | "
             "Regime | Entry | Stop Loss | Take Profit | Score"
         )
         print("-" * 120)
@@ -269,6 +325,9 @@ def main() -> None:
                 f"{index} | "
                 f"{result['symbol']} | "
                 f"{result['signal']} | "
+                f"{result['stars']} | "
+                f"{result['trade_quality_score']:.2f} | "
+                f"{result['trade_quality_label']} | "
                 f"{result['confidence']:.2f}% | "
                 f"{result['agreement']:.2f}% | "
                 f"{result['market_regime']} | "
@@ -276,6 +335,7 @@ def main() -> None:
                 f"{result['stop_loss']:.2f} | "
                 f"{result['take_profit']:.2f} | "
                 f"{result['score']:.2f}"
+                f"{result['opportunity_score']:.2f} | "
             )
 
     print("=======================================================")

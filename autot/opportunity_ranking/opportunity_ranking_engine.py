@@ -18,6 +18,7 @@ class OpportunityRankingEngine:
         trade_quality_score: float,
         historical_score: float,
         trend_strength_score: float,
+        volume_strength_score: float,
         confidence: float,
         risk_reward_ratio: float,
     ) -> float:
@@ -53,9 +54,10 @@ class OpportunityRankingEngine:
             risk_reward_score = 0.0
 
         opportunity_score = (
-            normalized_trade_quality * 0.40
+            normalized_trade_quality * 0.30
             + normalized_historical_score * 0.25
             + normalized_trend_strength * 0.15
+            + max(min(volume_strength_score, 100), 0) * 0.10
             + normalized_confidence * 0.10
             + risk_reward_score * 0.10
         )
