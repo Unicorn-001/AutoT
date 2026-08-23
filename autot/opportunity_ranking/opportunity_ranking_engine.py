@@ -19,6 +19,7 @@ class OpportunityRankingEngine:
         historical_score: float,
         trend_strength_score: float,
         volume_strength_score: float,
+        breakout_confirmation_score: float,
         confidence: float,
         risk_reward_ratio: float,
     ) -> float:
@@ -60,6 +61,7 @@ class OpportunityRankingEngine:
             + max(min(volume_strength_score, 100), 0) * 0.10
             + normalized_confidence * 0.10
             + risk_reward_score * 0.10
+            + max(min(breakout_confirmation_score, 100), 0) * 0.10
         )
 
         return round(opportunity_score, 2)

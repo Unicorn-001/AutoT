@@ -4,6 +4,7 @@ import time
 from packaging import metadata
 import pandas as pd
 
+from autot import support_resistance, volume_strength
 from autot.backtest.backtester import run_backtest
 from autot.settings.configuration_manager import ConfigurationManager
 from autot.market_data.market_data_manager import MarketDataManager
@@ -19,6 +20,9 @@ from autot.performance.performance_tracker import PerformanceTracker
 from autot.trade_quality.trade_quality_engine import TradeQualityEngine
 from autot.trend_strength.trend_strength_engine import TrendStrengthEngine
 from autot.volume_strength.volume_strength_engine import VolumeStrengthEngine
+from autot.support_resistance.support_resistance_engine import (
+    SupportResistanceEngine,
+)
 from autot.opportunity_ranking.opportunity_ranking_engine import (
     OpportunityRankingEngine,
 )
@@ -37,7 +41,7 @@ def analyse_stock(
     tracker.start(f"{symbol}_indicators")
     data = add_all_indicators(data)
     trend_strength = TrendStrengthEngine.calculate(data)
-    volume_strength = VolumeStrengthEngine.calculate(data)
+   
     tracker.stop(f"{symbol}_indicators")
 
     tracker.start(f"{symbol}_strategies")
@@ -59,11 +63,39 @@ def analyse_stock(
         data=data,
         consensus=consensus,
     )
+    volume_strength = VolumeStrengthEngine.calculate(data)
 
+    support_resistance = SupportResistanceEngine.calculate(
+        data=data,
+        signal=decision.final_signal,
+    )
+    breakout_confirmation_score = support_resistance["support_resistance_score"]
+
+    if support_resistance["support_resistance_label"] in [
+        "BREAKOUT_ZONE",
+        "BREAKDOWN_ZONE",
+    ]:
+        if volume_strength["volume_strength_label"] in [
+            "STRONG_VOLUME",
+            "VERY_STRONG_VOLUME",
+        ]:
+            breakout_confirmation_score = min(
+                breakout_confirmation_score + 20,
+                100,
+            )
+
+        elif volume_strength["volume_strength_label"] in [
+            "LOW_VOLUME",
+            "VERY_LOW_VOLUME",
+        ]:
+            breakout_confirmation_score = max(
+                breakout_confirmation_score - 20,
+                0,
+            )
     strategy_signal_map = {
         result["strategy"]: result["signal"]
         for result in weighted_strategy_results
-    }
+        }
 
     tracker.start(f"{symbol}_backtest")
     backtest_result = run_backtest(data)
@@ -75,7 +107,6 @@ def analyse_stock(
         win_rate=backtest_result["win_rate"],
         total_trades=backtest_result["total_trades"],
     )
-    volume_strength = VolumeStrengthEngine.calculate(data)
 
     trade_quality = TradeQualityEngine.calculate(
         signal=decision.final_signal,
@@ -92,8 +123,10 @@ def analyse_stock(
         historical_score=score,
         trend_strength_score=trend_strength["trend_strength_score"],
         volume_strength_score=volume_strength["volume_strength_score"],
+        breakout_confirmation_score=breakout_confirmation_score,
         confidence=decision.confidence,
         risk_reward_ratio=decision.risk_reward_ratio,
+       
     )
 
 
@@ -134,6 +167,13 @@ def analyse_stock(
         "volume_strength_score": volume_strength["volume_strength_score"],
         "volume_strength_label": volume_strength["volume_strength_label"],
         "volume_confirmed": volume_strength["volume_confirmed"],
+        "nearest_support": support_resistance["nearest_support"],
+        "nearest_resistance": support_resistance["nearest_resistance"],
+        "distance_to_support_percent": support_resistance["distance_to_support_percent"],
+        "distance_to_resistance_percent": support_resistance["distance_to_resistance_percent"],
+        "support_resistance_score": support_resistance["support_resistance_score"],
+        "support_resistance_label": support_resistance["support_resistance_label"],
+        "breakout_confirmation_score": breakout_confirmation_score,
         "stars": trade_quality["stars"],
         "opportunity_score": opportunity_score,
     }
@@ -184,6 +224,13 @@ def save_results_to_csv(results: list[dict], file_path: str, metadata: dict) -> 
         "volume_strength_score",
         "volume_strength_label",
         "volume_confirmed",
+        "nearest_support",
+        "nearest_resistance",
+        "distance_to_support_percent",
+        "distance_to_resistance_percent",
+        "support_resistance_score",
+        "support_resistance_label",
+        "breakout_confirmation_score",
     ]
 
     existing_columns = [
@@ -213,6 +260,12 @@ def save_results_to_csv(results: list[dict], file_path: str, metadata: dict) -> 
         "trade_quality_score",
         "volume_ratio",
         "volume_strength_score",
+        "nearest_support",
+        "nearest_resistance",
+        "distance_to_support_percent",
+        "distance_to_resistance_percent",
+        "support_resistance_score",
+        "breakout_confirmation_score",
     ]
 
     for column in numeric_columns:
@@ -316,9 +369,10 @@ def main() -> None:
     else:
         print(
             "Rank | Symbol | Signal | Stars | Quality | Label | Confidence | Agreement | "
-            "Regime | Entry | Stop Loss | Take Profit | Score"
+            "Regime | Entry | Stop Loss | Take Profit | Historical Score | Opportunity Score"
         )
-        print("-" * 120)
+
+        print("-" * 145)
 
         for index, result in enumerate(trade_opportunities, start=1):
             print(
@@ -334,8 +388,8 @@ def main() -> None:
                 f"{result['entry_price']:.2f} | "
                 f"{result['stop_loss']:.2f} | "
                 f"{result['take_profit']:.2f} | "
-                f"{result['score']:.2f}"
-                f"{result['opportunity_score']:.2f} | "
+                f"{result['score']:.2f} | "
+                f"{result['opportunity_score']:.2f}"
             )
 
     print("=======================================================")
