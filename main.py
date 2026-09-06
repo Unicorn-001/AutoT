@@ -20,6 +20,7 @@ from autot.performance.performance_tracker import PerformanceTracker
 from autot.trade_quality.trade_quality_engine import TradeQualityEngine
 from autot.trend_strength.trend_strength_engine import TrendStrengthEngine
 from autot.volume_strength.volume_strength_engine import VolumeStrengthEngine
+from autot.relative_strength.relative_strength_engine import RelativeStrengthEngine
 from autot.support_resistance.support_resistance_engine import (
     SupportResistanceEngine,
 )
@@ -36,12 +37,16 @@ def print_stage(message: str) -> None:
 def analyse_stock(
     symbol: str,
     data: pd.DataFrame,
+    benchmark_data: pd.DataFrame,
     tracker: PerformanceTracker,
     ) -> dict:
     tracker.start(f"{symbol}_indicators")
     data = add_all_indicators(data)
     trend_strength = TrendStrengthEngine.calculate(data)
-   
+    relative_strength = RelativeStrengthEngine.calculate(
+        stock_data=data,
+        benchmark_data=benchmark_data,
+    )
     tracker.stop(f"{symbol}_indicators")
 
     tracker.start(f"{symbol}_strategies")
@@ -124,6 +129,7 @@ def analyse_stock(
         trend_strength_score=trend_strength["trend_strength_score"],
         volume_strength_score=volume_strength["volume_strength_score"],
         breakout_confirmation_score=breakout_confirmation_score,
+        relative_strength_score=relative_strength["relative_strength_score"],
         confidence=decision.confidence,
         risk_reward_ratio=decision.risk_reward_ratio,
        
@@ -174,6 +180,11 @@ def analyse_stock(
         "support_resistance_score": support_resistance["support_resistance_score"],
         "support_resistance_label": support_resistance["support_resistance_label"],
         "breakout_confirmation_score": breakout_confirmation_score,
+        "stock_return_percent": relative_strength["stock_return_percent"],
+        "benchmark_return_percent": relative_strength["benchmark_return_percent"],
+        "relative_strength_percent": relative_strength["relative_strength_percent"],
+        "relative_strength_score": relative_strength["relative_strength_score"],
+        "relative_strength_label": relative_strength["relative_strength_label"],
         "stars": trade_quality["stars"],
         "opportunity_score": opportunity_score,
     }
@@ -231,6 +242,11 @@ def save_results_to_csv(results: list[dict], file_path: str, metadata: dict) -> 
         "support_resistance_score",
         "support_resistance_label",
         "breakout_confirmation_score",
+        "stock_return_percent",
+        "benchmark_return_percent",
+        "relative_strength_percent",
+        "relative_strength_score",
+        "relative_strength_label",
     ]
 
     existing_columns = [
@@ -266,6 +282,11 @@ def save_results_to_csv(results: list[dict], file_path: str, metadata: dict) -> 
         "distance_to_resistance_percent",
         "support_resistance_score",
         "breakout_confirmation_score",
+        "stock_return_percent",
+        "benchmark_return_percent",
+        "relative_strength_percent",
+        "relative_strength_score",
+        "relative_strength_label",
     ]
 
     for column in numeric_columns:
@@ -306,6 +327,13 @@ def main() -> None:
         period=config.get_string("BACKTEST_PERIOD"),
         interval=config.get_string("BACKTEST_INTERVAL"),
     )
+
+    benchmark_data = MarketDataManager.get_stock_data(
+        "SPY",
+        config.get_string("BACKTEST_PERIOD"),
+        config.get_string("BACKTEST_INTERVAL"),
+    )
+
     tracker.stop("Batch Download")
     print_stage("Loading market data from cache/download")
     results = []
@@ -319,6 +347,7 @@ def main() -> None:
                 analyse_stock,
                 symbol,
                 batch_data[symbol],
+                benchmark_data,
                 tracker,
             ): symbol
             for symbol in symbols

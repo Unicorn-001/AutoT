@@ -9,8 +9,8 @@ Purpose:
 
 class OpportunityRankingEngine:
     """
-    Combines current trade quality and historical performance
-    into one opportunity-ranking score.
+    Combines current trade quality, historical performance,
+    and current market-strength factors into one opportunity-ranking score.
     """
 
     @staticmethod
@@ -20,6 +20,7 @@ class OpportunityRankingEngine:
         trend_strength_score: float,
         volume_strength_score: float,
         breakout_confirmation_score: float,
+        relative_strength_score: float,
         confidence: float,
         risk_reward_ratio: float,
     ) -> float:
@@ -55,13 +56,14 @@ class OpportunityRankingEngine:
             risk_reward_score = 0.0
 
         opportunity_score = (
-            normalized_trade_quality * 0.30
-            + normalized_historical_score * 0.25
+            normalized_trade_quality * 0.25
+            + normalized_historical_score * 0.15
             + normalized_trend_strength * 0.15
             + max(min(volume_strength_score, 100), 0) * 0.10
-            + normalized_confidence * 0.10
-            + risk_reward_score * 0.10
             + max(min(breakout_confirmation_score, 100), 0) * 0.10
+            + max(min(relative_strength_score, 100), 0) * 0.10
+            + normalized_confidence * 0.10
+            + risk_reward_score * 0.05
         )
 
         return round(opportunity_score, 2)
