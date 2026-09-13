@@ -39,10 +39,12 @@ class DecisionEngine:
         if highest_score == 0:
             agreement = 0.0
         else:
-            agreement = ((highest_score - second_highest_score) / highest_score) * 100
+            agreement = (
+                (highest_score - second_highest_score)
+                / highest_score
+            ) * 100
 
-            agreement_percent = round(agreement, 2)
-
+        agreement_percent = round(agreement, 2)
         if final_signal in ["BUY", "SELL"] and confidence_percent < MIN_CONFIDENCE:
             final_signal = "HOLD"
             reason = (

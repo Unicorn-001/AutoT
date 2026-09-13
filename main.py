@@ -120,8 +120,7 @@ def analyse_stock(
         score=score,
         market_regime=decision.market_regime,
         risk_reward_ratio=decision.risk_reward_ratio,
-        trend_strength_score=trend_strength["trend_strength_score"],
-    )
+)
 
     opportunity_score = OpportunityRankingEngine.calculate(
         trade_quality_score=trade_quality["trade_quality_score"],
