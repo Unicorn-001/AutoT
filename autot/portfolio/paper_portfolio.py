@@ -38,6 +38,8 @@ class PaperPortfolio:
         symbol: str,
         price: float,
         quantity: int,
+        stop_loss: float,
+        max_loss: float,
     ) -> None:
         """
         Buy a stock in paper trading mode.
@@ -49,10 +51,14 @@ class PaperPortfolio:
         if quantity <= 0:
             raise ValueError("Quantity must be greater than zero.")
 
+        if symbol in self.positions:
+            raise ValueError(f"Position already open for {symbol}.")
+
         total_cost = price * quantity
 
         if total_cost > self.cash:
             raise ValueError("Not enough cash to buy this position.")
+
 
         self.cash -= total_cost
 
@@ -60,6 +66,8 @@ class PaperPortfolio:
             symbol=symbol,
             quantity=quantity,
             average_price=price,
+            stop_loss=stop_loss,
+            max_loss=max_loss,
         )
 
         self.trade_history.append(
@@ -146,6 +154,17 @@ class PaperPortfolio:
             unrealised_profit_loss += current_value - entry_value
 
         return unrealised_profit_loss
+    def calculate_portfolio_risk(self) -> float:
+        """
+        Calculate the total maximum risk of all open positions.
+        """
+
+        total_risk = sum(
+            position.max_loss
+            for position in self.positions.values()
+        )
+
+        return round(total_risk, 2)
 
     def get_summary(
         self,

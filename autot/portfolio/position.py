@@ -18,3 +18,5 @@ class Position:
     symbol: str
     quantity: int
     average_price: float
+    stop_loss: float
+    max_loss: float

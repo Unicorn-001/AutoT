@@ -25,6 +25,8 @@ class PaperExecution:
         symbol: str,
         price: float,
         quantity: int,
+        stop_loss: float,
+        max_loss: float,
     ) -> None:
         """
         Execute a simulated buy order.
@@ -34,6 +36,8 @@ class PaperExecution:
             symbol=symbol,
             price=price,
             quantity=quantity,
+            stop_loss=stop_loss,
+            max_loss=max_loss,
         )
 
     def execute_sell(

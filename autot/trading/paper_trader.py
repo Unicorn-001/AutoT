@@ -3,71 +3,121 @@ File: paper_trader.py
 Project: AutoT
 
 Purpose:
-    Connect ranked stock results to the paper execution engine.
+    Coordinate paper trading using AutoT trade decisions,
+    portfolio risk controls, and the broker interface.
 """
 
-from autot.execution.paper_execution import PaperExecution
-from autot.portfolio.paper_portfolio import PaperPortfolio
+from autot.broker.broker_interface import BrokerInterface
+from autot.decision.trade_decision import TradeDecision
+from autot.risk.risk_manager import RiskManager
 
 
 class PaperTrader:
     """
-    Executes paper trades from a ranked stock shortlist.
+    Execute approved AutoT trade decisions through a broker.
     """
 
-    def __init__(
-        self,
-        portfolio: PaperPortfolio,
-        execution: PaperExecution,
-        trade_amount: float,
-    ) -> None:
-        if trade_amount <= 0:
-            raise ValueError("Trade amount must be greater than zero.")
+    def __init__(self, broker: BrokerInterface) -> None:
+        self.broker = broker
 
-        self.portfolio = portfolio
-        self.execution = execution
-        self.trade_amount = trade_amount
-
-    def buy_shortlist(
+    def execute_decision(
         self,
-        shortlist: list[dict],
-        current_prices: dict[str, float],
-    ) -> None:
+        decision: TradeDecision,
+        daily_loss_amount: float,
+    ) -> dict:
         """
-        Buy each stock in the shortlist using fixed trade amount.
+        Evaluate and execute one trade decision.
+
+        V1 paper trading currently supports opening BUY positions only.
+        SELL signals are not used to open short positions.
         """
 
-        for stock in shortlist:
-            symbol = stock["symbol"]
+        signal = decision.final_signal.upper()
 
-            if symbol not in current_prices:
-                print(f"Skipping {symbol}: current price missing.")
-                continue
+        if signal == "HOLD":
+            return {
+                "executed": False,
+                "symbol": decision.symbol,
+                "signal": signal,
+                "reason": "HOLD signal does not create a trade.",
+            }
 
-            price = current_prices[symbol]
+        if signal == "SELL":
+            return {
+                "executed": False,
+                "symbol": decision.symbol,
+                "signal": signal,
+                "reason": (
+                    "Opening short positions is not supported "
+                    "in V1 paper trading."
+                ),
+            }
 
-            if price <= 0:
-                print(f"Skipping {symbol}: invalid price.")
-                continue
+        if signal != "BUY":
+            return {
+                "executed": False,
+                "symbol": decision.symbol,
+                "signal": signal,
+                "reason": "Unsupported trading signal.",
+            }
 
-            quantity = int(self.trade_amount // price)
+        quantity = decision.position_size.quantity
 
-            if quantity <= 0:
-                print(f"Skipping {symbol}: trade amount too small.")
-                continue
+        if quantity <= 0:
+            return {
+                "executed": False,
+                "symbol": decision.symbol,
+                "signal": signal,
+                "reason": "Calculated position quantity is zero.",
+            }
 
-            try:
-                self.execution.execute_buy(
-                    symbol=symbol,
-                    price=price,
-                    quantity=quantity,
-                )
+        positions = self.broker.get_positions()
+        current_open_positions = len(positions)
 
-                print(
-                    f"Paper BUY executed: {symbol} | "
-                    f"Price: {price:.2f} | "
-                    f"Qty: {quantity}"
-                )
+        account_balance = self.broker.get_account_balance()
+        current_portfolio_risk = self.broker.get_portfolio_risk()
 
-            except ValueError as error:
-                print(f"Could not buy {symbol}: {error}")
+        risk_check = RiskManager.can_open_trade(
+            account_balance=account_balance,
+            current_open_positions=current_open_positions,
+            current_portfolio_risk=current_portfolio_risk,
+            new_trade_max_loss=decision.position_size.max_loss,
+            daily_loss_amount=daily_loss_amount,
+        )
+
+        if not risk_check["can_open_trade"]:
+            return {
+                "executed": False,
+                "symbol": decision.symbol,
+                "signal": signal,
+                "reason": " ".join(risk_check["reasons"]),
+                "risk_check": risk_check,
+            }
+
+        try:
+            self.broker.buy(
+                symbol=decision.symbol,
+                quantity=quantity,
+                price=decision.entry_price,
+                stop_loss=decision.stop_loss,
+                max_loss=decision.position_size.max_loss,
+            )
+        except ValueError as error:
+            return {
+                "executed": False,
+                "symbol": decision.symbol,
+                "signal": signal,
+                "reason": str(error),
+                "risk_check": risk_check,
+            }
+        return {
+            "executed": True,
+            "symbol": decision.symbol,
+            "signal": signal,
+            "quantity": quantity,
+            "entry_price": round(decision.entry_price, 2),
+            "position_value": decision.position_size.position_value,
+            "max_loss": decision.position_size.max_loss,
+            "reason": "Paper BUY executed successfully.",
+            "risk_check": risk_check,
+        }

@@ -16,19 +16,19 @@ class BrokerInterface(ABC):
     """
     Base broker interface.
     """
-
     @abstractmethod
     def buy(
         self,
         symbol: str,
         quantity: int,
         price: float,
+        stop_loss: float,
+        max_loss: float,
     ) -> None:
         """
         Place a buy order.
         """
         pass
-
     @abstractmethod
     def sell(
         self,
@@ -52,5 +52,12 @@ class BrokerInterface(ABC):
     def get_positions(self):
         """
         Return all open positions.
+        """
+        pass
+
+    @abstractmethod
+    def get_portfolio_risk(self) -> float:
+        """
+        Return the total maximum risk of all open positions.
         """
         pass

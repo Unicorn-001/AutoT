@@ -25,13 +25,17 @@ class PaperBroker(BrokerInterface):
         symbol: str,
         quantity: int,
         price: float,
+        stop_loss: float,
+        max_loss: float,
     ) -> None:
-        self.execution.execute_buy(
-            symbol=symbol,
-            price=price,
-            quantity=quantity,
-        )
 
+        self.execution.execute_buy(
+        symbol=symbol,
+        price=price,
+        quantity=quantity,
+        stop_loss=stop_loss,
+        max_loss=max_loss,
+    )
     def sell(
         self,
         symbol: str,
@@ -48,7 +52,20 @@ class PaperBroker(BrokerInterface):
         )
 
     def get_account_balance(self) -> float:
-        return self.portfolio.cash
+        """
+        Return the account value used for V1 risk calculations.
+
+        V1 uses initial paper capital as the risk base.
+        This can later be replaced by current portfolio equity
+        when live position prices are available.
+        """
+        return self.portfolio.initial_cash
 
     def get_positions(self):
         return self.portfolio.positions
+
+    def get_portfolio_risk(self) -> float:
+        """
+        Return the total maximum risk of all open paper positions.
+        """
+        return self.portfolio.calculate_portfolio_risk()
