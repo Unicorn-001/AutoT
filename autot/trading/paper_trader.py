@@ -121,3 +121,61 @@ class PaperTrader:
             "reason": "Paper BUY executed successfully.",
             "risk_check": risk_check,
         }
+
+    def close_position(
+        self,
+        symbol: str,
+        exit_price: float,
+    ) -> dict:
+        """
+        Explicitly close an existing paper position.
+
+        This is separate from a scanner SELL signal.
+        V1 closes the entire open position.
+        """
+
+        positions = self.broker.get_positions()
+
+        if symbol not in positions:
+            return {
+                "executed": False,
+                "symbol": symbol,
+                "action": "CLOSE",
+                "reason": f"No open position found for {symbol}.",
+            }
+
+        position = positions[symbol]
+        quantity = position.quantity
+        entry_price = position.average_price
+
+        try:
+            self.broker.sell(
+                symbol=symbol,
+                quantity=quantity,
+                price=exit_price,
+            )
+        except ValueError as error:
+            return {
+                "executed": False,
+                "symbol": symbol,
+                "action": "CLOSE",
+                "reason": str(error),
+            }
+
+        realized_profit_loss = (
+            exit_price - entry_price
+        ) * quantity
+
+        return {
+            "executed": True,
+            "symbol": symbol,
+            "action": "CLOSE",
+            "quantity": quantity,
+            "entry_price": round(entry_price, 2),
+            "exit_price": round(exit_price, 2),
+            "realized_profit_loss": round(
+                realized_profit_loss,
+                2,
+            ),
+            "reason": "Paper position closed successfully.",
+        }
