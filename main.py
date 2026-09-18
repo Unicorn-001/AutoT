@@ -27,6 +27,18 @@ from autot.portfolio.portfolio_storage import (
     load_or_create_portfolio,
     save_portfolio,
 )
+from autot.portfolio.journal_storage import (
+    load_open_journal_entries,
+    save_open_journal_entries,
+)
+
+from autot.portfolio.open_journal_entry import OpenJournalEntry
+
+from autot.portfolio.trade_journal import (
+    complete_journal_entry,
+    append_journal_entry_to_csv,
+)
+
 from autot.trading.paper_trader import PaperTrader
 from autot.support_resistance.support_resistance_engine import (
     SupportResistanceEngine,
@@ -313,10 +325,14 @@ def main() -> None:
     print_stage("Loading configuration")
     config = ConfigurationManager()
     paper_portfolio = load_or_create_portfolio(
-        initial_cash=ACCOUNT_SIZE
-    )
+    initial_cash=ACCOUNT_SIZE
+)
+
+    open_journal_entries = load_open_journal_entries()
+
     paper_broker = PaperBroker(paper_portfolio)
     paper_trader = PaperTrader(paper_broker)
+
     run_time = datetime.now()
     metadata = {
         "run_date": run_time.strftime("%Y-%m-%d"),
@@ -639,6 +655,39 @@ def main() -> None:
                         if execution_result["executed"]:
                             save_portfolio(paper_portfolio)
 
+                            selected_opportunity = next(
+                                opportunity
+                                for opportunity in buy_opportunities
+                                if opportunity["symbol"] == selected_symbol
+                            )
+
+                            open_journal_entry = OpenJournalEntry(
+                                symbol=decision.symbol,
+                                entry_timestamp=datetime.now(),
+                                entry_price=decision.entry_price,
+                                quantity=position_size.quantity,
+                                stop_loss=decision.stop_loss,
+                                take_profit=decision.take_profit,
+                                risk_reward_ratio=decision.risk_reward_ratio,
+                                max_loss=position_size.max_loss,
+                                confidence=decision.confidence,
+                                agreement=decision.agreement,
+                                market_regime=decision.market_regime,
+                                trade_quality_score=selected_opportunity[
+                                    "trade_quality_score"
+                                ],
+                                opportunity_score=selected_opportunity[
+                                    "opportunity_score"
+                                ],
+                            )
+
+                            open_journal_entries[
+                                decision.symbol
+                            ] = open_journal_entry
+
+                            save_open_journal_entries(
+                                open_journal_entries
+                            )
                             print(
                                 "\nPaper BUY executed successfully."
                             )
@@ -757,7 +806,30 @@ def main() -> None:
 
                         if close_result["executed"]:
                             save_portfolio(paper_portfolio)
+                            if selected_symbol in open_journal_entries:
+                                open_entry = open_journal_entries[selected_symbol]
 
+                                completed_entry = complete_journal_entry(
+                                    open_entry=open_entry,
+                                    exit_price=exit_price,
+                                    exit_timestamp=datetime.now(),
+                                    exit_reason="MANUAL",
+                                )
+
+                                append_journal_entry_to_csv(
+                                    completed_entry
+                                )
+
+                                del open_journal_entries[selected_symbol]
+
+                                save_open_journal_entries(
+                                    open_journal_entries
+                                )
+                            else:
+                                print(
+                                    "\nJournal note: No open journal entry "
+                                    "was found for this position."
+                                )
                             print(
                                 "\nPaper position closed successfully."
                             )
