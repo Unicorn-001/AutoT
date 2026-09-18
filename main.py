@@ -21,6 +21,12 @@ from autot.trade_quality.trade_quality_engine import TradeQualityEngine
 from autot.trend_strength.trend_strength_engine import TrendStrengthEngine
 from autot.volume_strength.volume_strength_engine import VolumeStrengthEngine
 from autot.relative_strength.relative_strength_engine import RelativeStrengthEngine
+from autot.broker.paper_broker import PaperBroker
+from autot.config.trading_settings import ACCOUNT_SIZE
+from autot.portfolio.portfolio_storage import (
+    load_or_create_portfolio,
+)
+from autot.trading.paper_trader import PaperTrader
 from autot.support_resistance.support_resistance_engine import (
     SupportResistanceEngine,
 )
@@ -39,7 +45,7 @@ def analyse_stock(
     data: pd.DataFrame,
     benchmark_data: pd.DataFrame,
     tracker: PerformanceTracker,
-    ) -> dict:
+    ) -> tuple[dict, object]:
     tracker.start(f"{symbol}_indicators")
     data = add_all_indicators(data)
     trend_strength = TrendStrengthEngine.calculate(data)
@@ -135,7 +141,7 @@ def analyse_stock(
     )
 
 
-    return {
+    result = {
         "symbol": symbol,
         "signal": decision.final_signal,
         "confidence": decision.confidence,
@@ -188,6 +194,7 @@ def analyse_stock(
         "opportunity_score": opportunity_score,
     }
 
+    return result, decision
 
 def save_results_to_csv(results: list[dict], file_path: str, metadata: dict) -> None:
     df = pd.DataFrame(results)
@@ -304,6 +311,11 @@ def main() -> None:
     tracker = PerformanceTracker()
     print_stage("Loading configuration")
     config = ConfigurationManager()
+    paper_portfolio = load_or_create_portfolio(
+        initial_cash=ACCOUNT_SIZE
+    )
+    paper_broker = PaperBroker(paper_portfolio)
+    paper_trader = PaperTrader(paper_broker)
     run_time = datetime.now()
     metadata = {
         "run_date": run_time.strftime("%Y-%m-%d"),
@@ -336,6 +348,7 @@ def main() -> None:
     tracker.stop("Batch Download")
     print_stage("Loading market data from cache/download")
     results = []
+    trade_decisions = {}
     max_workers = 8
 
     tracker.start("Analyse Stocks")
@@ -357,9 +370,13 @@ def main() -> None:
             symbol = future_to_symbol[future]
 
             try:
-                result = future.result()
+                result, decision = future.result()
+
                 results.append(result)
+                trade_decisions[symbol] = decision
+
                 print(f"Completed {len(results)} / {len(symbols)}: {symbol}")
+
             except Exception as error:
                 print(f"Error analysing {symbol}: {error}")
 
@@ -461,7 +478,29 @@ def main() -> None:
         metadata,
     )
     tracker.stop("Save Reports")
+    print_stage("Paper Trading Portfolio")
 
+    print(f"Initial cash: ${paper_portfolio.initial_cash:.2f}")
+    print(f"Available cash: ${paper_portfolio.cash:.2f}")
+    print(
+        f"Portfolio risk: "
+        f"${paper_portfolio.calculate_portfolio_risk():.2f}"
+    )
+    print(f"Open positions: {len(paper_portfolio.positions)}")
+
+    if paper_portfolio.positions:
+        print("\nCurrent paper positions:")
+
+        for position in paper_portfolio.positions.values():
+            print(
+                f"{position.symbol} | "
+                f"Qty: {position.quantity} | "
+                f"Entry: ${position.average_price:.2f} | "
+                f"Stop: ${position.stop_loss:.2f} | "
+                f"Max Risk: ${position.max_loss:.2f}"
+            )
+    else:
+        print("No open paper positions.")
     end_time = time.time()
     total_time = end_time - start_time
 

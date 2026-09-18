@@ -108,3 +108,21 @@ def load_portfolio(
     ]
 
     return portfolio
+
+def load_or_create_portfolio(
+    initial_cash: float,
+    file_path: str = DEFAULT_PORTFOLIO_FILE,
+) -> PaperPortfolio:
+    """
+    Load an existing paper portfolio or create a new one.
+
+    If no saved portfolio state exists, a fresh portfolio is created
+    using the supplied initial cash value.
+    """
+
+    path = Path(file_path)
+
+    if path.exists():
+        return load_portfolio(file_path)
+
+    return PaperPortfolio(initial_cash=initial_cash)
