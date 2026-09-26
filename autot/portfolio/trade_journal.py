@@ -183,3 +183,58 @@ def complete_journal_entry(
         outcome=outcome,
         exit_reason=exit_reason,
     )
+
+
+def calculate_daily_realized_loss(
+    target_date,
+    file_path: str = "data_storage/processed/trade_journal.csv",
+) -> float:
+    """
+    Calculate the total realised loss from paper trades
+    closed on the supplied date.
+
+    Profitable and breakeven trades do not offset losses.
+    """
+
+    path = Path(file_path)
+
+    if not path.exists():
+        return 0.0
+
+    df = pd.read_csv(path)
+
+    if df.empty:
+        return 0.0
+
+    required_columns = {
+        "exit_timestamp",
+        "realized_profit_loss",
+    }
+
+    if not required_columns.issubset(df.columns):
+        raise ValueError(
+            "Trade journal is missing required columns "
+            "for daily loss calculation."
+        )
+
+    exit_timestamps = pd.to_datetime(
+        df["exit_timestamp"],
+        errors="coerce",
+    )
+
+    realized_profit_loss = pd.to_numeric(
+        df["realized_profit_loss"],
+        errors="coerce",
+    )
+
+    same_day = (
+        exit_timestamps.dt.date == target_date
+    )
+
+    losses = realized_profit_loss[
+        same_day & (realized_profit_loss < 0)
+    ]
+
+    daily_loss = -losses.sum()
+
+    return round(float(daily_loss), 2)

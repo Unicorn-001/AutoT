@@ -37,6 +37,7 @@ from autot.portfolio.open_journal_entry import OpenJournalEntry
 from autot.portfolio.trade_journal import (
     complete_journal_entry,
     append_journal_entry_to_csv,
+    calculate_daily_realized_loss,
 )
 
 from autot.trading.paper_trader import PaperTrader
@@ -619,22 +620,23 @@ def main() -> None:
                 )
                 print("==========================================")
 
-                daily_loss_input = input(
-                    "\nEnter today's realised paper-trading "
-                    "loss ($, enter 0 if none): "
-                ).strip()
-
                 try:
-                    daily_loss_amount = float(daily_loss_input)
-
-                    if daily_loss_amount < 0:
-                        raise ValueError
-
-                except ValueError:
-                    print(
-                        "\nInvalid daily loss amount. "
-                        "No paper trade executed."
+                    daily_loss_amount = calculate_daily_realized_loss(
+                        target_date=datetime.now().date()
                     )
+
+                    print(
+                        f"\nToday's realised paper-trading loss: "
+                        f"${daily_loss_amount:.2f}"
+                    )
+
+                except (OSError, ValueError) as error:
+                    print(
+                        "\nUnable to calculate today's realised "
+                        "paper-trading loss."
+                    )
+                    print(f"Reason: {error}")
+                    print("No paper trade executed.")
                 else:
                     confirmation = input(
                         "Type YES to execute this paper trade: "
