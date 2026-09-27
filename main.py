@@ -323,7 +323,7 @@ def save_results_to_csv(results: list[dict], file_path: str, metadata: dict) -> 
 
 
 def main() -> None:
-    start_time = time.time()
+    application_start_time = time.perf_counter()
     print_stage("AutoT started")
 
     tracker = PerformanceTracker()
@@ -523,6 +523,13 @@ def main() -> None:
             )
     else:
         print("No open paper positions.")
+
+    processing_end_time = time.perf_counter()
+    processing_time = (
+        processing_end_time - application_start_time
+    )
+
+    manual_session_start_time = time.perf_counter()
 
     while True:
         print("\n========== MANUAL PAPER TRADING ==========")
@@ -978,12 +985,38 @@ def main() -> None:
 
         else:
             print("\nInvalid option. No paper trading action taken.")
-    end_time = time.time()
-    total_time = end_time - start_time
+    manual_session_end_time = time.perf_counter()
+
+    manual_session_time = (
+        manual_session_end_time
+        - manual_session_start_time
+    )
+
+    application_end_time = time.perf_counter()
+
+    total_application_time = (
+        application_end_time
+        - application_start_time
+    )
 
     tracker.print_report()
+
+    print("\n========== AUTOT RUNTIME SUMMARY ==========")
+    print(
+        f"{'AutoT Processing Time':<27}: "
+        f"{processing_time:.2f} sec"
+    )
+    print(
+        f"{'Manual Trading Session':<27}: "
+        f"{manual_session_time:.2f} sec"
+    )
+    print(
+        f"{'Total Application Time':<27}: "
+        f"{total_application_time:.2f} sec"
+    )
+    print("===========================================")
+
     print_stage("AutoT completed")
-    print(f"\nExecution time: {total_time:.2f} seconds")
 
 
 if __name__ == "__main__":
