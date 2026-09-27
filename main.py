@@ -40,6 +40,10 @@ from autot.portfolio.trade_journal import (
     calculate_daily_realized_loss,
 )
 
+from autot.portfolio.performance_report import (
+    build_performance_report,
+)
+
 from autot.trading.paper_trader import PaperTrader
 from autot.support_resistance.support_resistance_engine import (
     SupportResistanceEngine,
@@ -524,11 +528,12 @@ def main() -> None:
     print("1. View today's trade opportunities")
     print("2. Open a paper trade")
     print("3. Close an existing paper position")
-    print("4. Exit")
+    print("4. View paper trading performance")
+    print("5. Exit")
     print("==========================================")
 
     manual_choice = input(
-        "Select an option (1-4): "
+        "Select an option (1-5): "
     ).strip()
 
     if manual_choice == "1":
@@ -877,6 +882,96 @@ def main() -> None:
                             )
 
     elif manual_choice == "4":
+        try:
+            performance_report = build_performance_report(
+                portfolio=paper_portfolio,
+                target_date=datetime.now().date(),
+            )
+
+        except (OSError, ValueError) as error:
+            print(
+                "\nUnable to build paper trading "
+                "performance report."
+            )
+            print(f"Reason: {error}")
+
+        else:
+            print(
+                "\n========== PAPER TRADING PERFORMANCE =========="
+            )
+
+            print(
+                f"Initial Capital: "
+                f"${performance_report['initial_cash']:.2f}"
+            )
+            print(
+                f"Available Cash: "
+                f"${performance_report['available_cash']:.2f}"
+            )
+            print(
+                f"Invested Capital: "
+                f"${performance_report['invested_capital']:.2f}"
+            )
+            print(
+                f"Open Positions: "
+                f"{performance_report['open_positions']}"
+            )
+            print(
+                f"Portfolio Risk: "
+                f"${performance_report['portfolio_risk']:.2f}"
+            )
+
+            print("-----------------------------------------------")
+
+            print(
+                f"Completed Trades: "
+                f"{performance_report['completed_trades']}"
+            )
+            print(
+                f"Profitable Trades: "
+                f"{performance_report['profitable_trades']}"
+            )
+            print(
+                f"Losing Trades: "
+                f"{performance_report['losing_trades']}"
+            )
+            print(
+                f"Breakeven Trades: "
+                f"{performance_report['breakeven_trades']}"
+            )
+            print(
+                f"Win Rate: "
+                f"{performance_report['win_rate']:.2f}%"
+            )
+            print(
+                f"Total Realised P/L: "
+                f"${performance_report['total_realized_profit_loss']:.2f}"
+            )
+            print(
+                f"Average Return: "
+                f"{performance_report['average_return_percent']:.2f}%"
+            )
+
+            print("-----------------------------------------------")
+
+            print(
+                f"Today's Realised Loss: "
+                f"${performance_report['daily_realized_loss']:.2f}"
+            )
+            print(
+                f"Daily Loss Limit: "
+                f"${performance_report['maximum_daily_loss']:.2f}"
+            )
+            print(
+                f"Remaining Daily Loss Allowance: "
+                f"${performance_report['remaining_daily_loss_allowance']:.2f}"
+            )
+
+            print(
+                "================================================"
+            )
+
+    elif manual_choice == "5":
         print("\nExiting Manual Paper Trading Mode.")
 
     else:
