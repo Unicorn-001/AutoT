@@ -4,6 +4,9 @@ Project: AutoT
 
 Purpose:
     Track execution time of AutoT processing stages.
+
+    Separates wall-clock stage timings from accumulated
+    per-stock worker workload.
 """
 
 import time
@@ -15,7 +18,7 @@ class PerformanceTracker:
 
     def start(self, name: str) -> None:
         self.timings[name] = {
-            "start": time.time(),
+            "start": time.perf_counter(),
             "elapsed": 0.0,
         }
 
@@ -24,30 +27,74 @@ class PerformanceTracker:
             return
 
         self.timings[name]["elapsed"] = (
-            time.time() - self.timings[name]["start"]
+            time.perf_counter()
+            - self.timings[name]["start"]
         )
 
     def print_report(self) -> None:
         print("\n========== PERFORMANCE REPORT ==========")
 
-        summary = {}
+        wall_clock_timings = {}
+        worker_timings = {}
+
+        worker_stages = {
+            "indicators",
+            "strategies",
+            "backtest",
+        }
 
         for name, timing in self.timings.items():
             elapsed = timing["elapsed"]
 
             if "_" in name:
-                stage = name.split("_")[-1]
-            else:
-                stage = name
+                stage = name.rsplit("_", 1)[-1]
 
-            summary[stage] = summary.get(stage, 0.0) + elapsed
+                if stage in worker_stages:
+                    worker_timings[stage] = (
+                        worker_timings.get(stage, 0.0)
+                        + elapsed
+                    )
+                    continue
 
-        total = 0.0
+            wall_clock_timings[name] = elapsed
 
-        for stage, elapsed in summary.items():
-            total += elapsed
-            print(f"{stage:<25}: {elapsed:.2f} sec")
+        print("\nWall-clock stages:")
+
+        wall_clock_total = 0.0
+
+        for stage, elapsed in wall_clock_timings.items():
+            wall_clock_total += elapsed
+            print(
+                f"{stage:<25}: "
+                f"{elapsed:.2f} sec"
+            )
 
         print("----------------------------------------")
-        print(f"{'Total measured':<25}: {total:.2f} sec")
+        print(
+            f"{'Measured wall-clock total':<25}: "
+            f"{wall_clock_total:.2f} sec"
+        )
+
+        if worker_timings:
+            print("\nWorker workload:")
+            print(
+                "(Accumulated across stocks; "
+                "parallel times overlap)"
+            )
+
+            worker_total = 0.0
+
+            for stage, elapsed in worker_timings.items():
+                worker_total += elapsed
+                print(
+                    f"{stage:<25}: "
+                    f"{elapsed:.2f} sec"
+                )
+
+            print("----------------------------------------")
+            print(
+                f"{'Total worker workload':<25}: "
+                f"{worker_total:.2f} sec"
+            )
+
         print("========================================")
