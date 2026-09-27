@@ -524,458 +524,460 @@ def main() -> None:
     else:
         print("No open paper positions.")
 
-    print("\n========== MANUAL PAPER TRADING ==========")
-    print("1. View today's trade opportunities")
-    print("2. Open a paper trade")
-    print("3. Close an existing paper position")
-    print("4. View paper trading performance")
-    print("5. Exit")
-    print("==========================================")
+    while True:
+        print("\n========== MANUAL PAPER TRADING ==========")
+        print("1. View today's trade opportunities")
+        print("2. Open a paper trade")
+        print("3. Close an existing paper position")
+        print("4. View paper trading performance")
+        print("5. Exit")
+        print("==========================================")
 
-    manual_choice = input(
-        "Select an option (1-5): "
-    ).strip()
+        manual_choice = input(
+            "Select an option (1-5): "
+        ).strip()
 
-    if manual_choice == "1":
-        if not trade_opportunities:
-            print("\nNo actionable trade opportunities today.")
-        else:
-            print("\nToday's trade opportunities:")
+        if manual_choice == "1":
+            if not trade_opportunities:
+                print("\nNo actionable trade opportunities today.")
+            else:
+                print("\nToday's trade opportunities:")
 
-            for opportunity in trade_opportunities:
+                for opportunity in trade_opportunities:
+                    print(
+                        f"{opportunity['symbol']} | "
+                        f"{opportunity['signal']} | "
+                        f"Quality: "
+                        f"{opportunity['trade_quality_score']:.2f} | "
+                        f"Opportunity Score: "
+                        f"{opportunity['opportunity_score']:.2f}"
+                    )
+
+        elif manual_choice == "2":
+            buy_opportunities = [
+                opportunity
+                for opportunity in trade_opportunities
+                if opportunity["signal"] == "BUY"
+            ]
+
+            if not buy_opportunities:
                 print(
-                    f"{opportunity['symbol']} | "
-                    f"{opportunity['signal']} | "
-                    f"Quality: "
-                    f"{opportunity['trade_quality_score']:.2f} | "
-                    f"Opportunity Score: "
-                    f"{opportunity['opportunity_score']:.2f}"
-                )
-
-    elif manual_choice == "2":
-        buy_opportunities = [
-            opportunity
-            for opportunity in trade_opportunities
-            if opportunity["signal"] == "BUY"
-        ]
-
-        if not buy_opportunities:
-            print(
-                "\nNo qualified BUY opportunities "
-                "are available today."
-            )
-        else:
-            print("\nQualified BUY opportunities:")
-
-            for opportunity in buy_opportunities:
-                print(
-                    f"{opportunity['symbol']} | "
-                    f"Entry: ${opportunity['entry_price']:.2f} | "
-                    f"Stop: ${opportunity['stop_loss']:.2f} | "
-                    f"Target: ${opportunity['take_profit']:.2f} | "
-                    f"Quality: "
-                    f"{opportunity['trade_quality_score']:.2f}"
-                )
-
-            selected_symbol = input(
-                "\nEnter symbol to paper trade: "
-            ).strip().upper()
-
-            valid_symbols = {
-                opportunity["symbol"]
-                for opportunity in buy_opportunities
-            }
-
-            if selected_symbol not in valid_symbols:
-                print(
-                    "\nInvalid selection. "
-                    "No paper trade executed."
+                    "\nNo qualified BUY opportunities "
+                    "are available today."
                 )
             else:
-                decision = trade_decisions[selected_symbol]
-                position_size = decision.position_size
+                print("\nQualified BUY opportunities:")
 
-                print(
-                    "\n========== PROPOSED PAPER TRADE =========="
-                )
-                print(f"Symbol: {decision.symbol}")
-                print(f"Signal: {decision.final_signal}")
-                print(f"Entry: ${decision.entry_price:.2f}")
-                print(f"Stop Loss: ${decision.stop_loss:.2f}")
-                print(
-                    f"Take Profit: "
-                    f"${decision.take_profit:.2f}"
-                )
-                print(
-                    f"Risk/Reward: "
-                    f"{decision.risk_reward_ratio:.2f}"
-                )
-                print(f"Quantity: {position_size.quantity}")
-                print(
-                    f"Position Value: "
-                    f"${position_size.position_value:.2f}"
-                )
-                print(
-                    f"Risk Per Share: "
-                    f"${position_size.risk_per_share:.2f}"
-                )
-                print(
-                    f"Maximum Loss: "
-                    f"${position_size.max_loss:.2f}"
-                )
-                print("==========================================")
-
-                try:
-                    daily_loss_amount = calculate_daily_realized_loss(
-                        target_date=datetime.now().date()
-                    )
-
+                for opportunity in buy_opportunities:
                     print(
-                        f"\nToday's realised paper-trading loss: "
-                        f"${daily_loss_amount:.2f}"
+                        f"{opportunity['symbol']} | "
+                        f"Entry: ${opportunity['entry_price']:.2f} | "
+                        f"Stop: ${opportunity['stop_loss']:.2f} | "
+                        f"Target: ${opportunity['take_profit']:.2f} | "
+                        f"Quality: "
+                        f"{opportunity['trade_quality_score']:.2f}"
                     )
 
-                except (OSError, ValueError) as error:
+                selected_symbol = input(
+                    "\nEnter symbol to paper trade: "
+                ).strip().upper()
+
+                valid_symbols = {
+                    opportunity["symbol"]
+                    for opportunity in buy_opportunities
+                }
+
+                if selected_symbol not in valid_symbols:
                     print(
-                        "\nUnable to calculate today's realised "
-                        "paper-trading loss."
+                        "\nInvalid selection. "
+                        "No paper trade executed."
                     )
-                    print(f"Reason: {error}")
-                    print("No paper trade executed.")
                 else:
-                    confirmation = input(
-                        "Type YES to execute this paper trade: "
-                    ).strip().upper()
+                    decision = trade_decisions[selected_symbol]
+                    position_size = decision.position_size
 
-                    if confirmation != "YES":
+                    print(
+                        "\n========== PROPOSED PAPER TRADE =========="
+                    )
+                    print(f"Symbol: {decision.symbol}")
+                    print(f"Signal: {decision.final_signal}")
+                    print(f"Entry: ${decision.entry_price:.2f}")
+                    print(f"Stop Loss: ${decision.stop_loss:.2f}")
+                    print(
+                        f"Take Profit: "
+                        f"${decision.take_profit:.2f}"
+                    )
+                    print(
+                        f"Risk/Reward: "
+                        f"{decision.risk_reward_ratio:.2f}"
+                    )
+                    print(f"Quantity: {position_size.quantity}")
+                    print(
+                        f"Position Value: "
+                        f"${position_size.position_value:.2f}"
+                    )
+                    print(
+                        f"Risk Per Share: "
+                        f"${position_size.risk_per_share:.2f}"
+                    )
+                    print(
+                        f"Maximum Loss: "
+                        f"${position_size.max_loss:.2f}"
+                    )
+                    print("==========================================")
+
+                    try:
+                        daily_loss_amount = calculate_daily_realized_loss(
+                            target_date=datetime.now().date()
+                        )
+
                         print(
-                            "\nPaper trade cancelled."
+                            f"\nToday's realised paper-trading loss: "
+                            f"${daily_loss_amount:.2f}"
                         )
+
+                    except (OSError, ValueError) as error:
+                        print(
+                            "\nUnable to calculate today's realised "
+                            "paper-trading loss."
+                        )
+                        print(f"Reason: {error}")
+                        print("No paper trade executed.")
                     else:
-                        execution_result = (
-                            paper_trader.execute_decision(
-                                decision=decision,
-                                daily_loss_amount=daily_loss_amount,
-                            )
-                        )
+                        confirmation = input(
+                            "Type YES to execute this paper trade: "
+                        ).strip().upper()
 
-                        if execution_result["executed"]:
-                            save_portfolio(paper_portfolio)
-
-                            selected_opportunity = next(
-                                opportunity
-                                for opportunity in buy_opportunities
-                                if opportunity["symbol"] == selected_symbol
-                            )
-
-                            open_journal_entry = OpenJournalEntry(
-                                symbol=decision.symbol,
-                                entry_timestamp=datetime.now(),
-                                entry_price=decision.entry_price,
-                                quantity=position_size.quantity,
-                                stop_loss=decision.stop_loss,
-                                take_profit=decision.take_profit,
-                                risk_reward_ratio=decision.risk_reward_ratio,
-                                max_loss=position_size.max_loss,
-                                confidence=decision.confidence,
-                                agreement=decision.agreement,
-                                market_regime=decision.market_regime,
-                                trade_quality_score=selected_opportunity[
-                                    "trade_quality_score"
-                                ],
-                                opportunity_score=selected_opportunity[
-                                    "opportunity_score"
-                                ],
-                            )
-
-                            open_journal_entries[
-                                decision.symbol
-                            ] = open_journal_entry
-
-                            save_open_journal_entries(
-                                open_journal_entries
-                            )
+                        if confirmation != "YES":
                             print(
-                                "\nPaper BUY executed successfully."
-                            )
-                            print(
-                                f"Symbol: "
-                                f"{execution_result['symbol']}"
-                            )
-                            print(
-                                f"Quantity: "
-                                f"{execution_result['quantity']}"
-                            )
-                            print(
-                                f"Entry: "
-                                f"${execution_result['entry_price']:.2f}"
-                            )
-                            print(
-                                f"Position Value: "
-                                f"${execution_result['position_value']:.2f}"
-                            )
-                            print(
-                                f"Maximum Loss: "
-                                f"${execution_result['max_loss']:.2f}"
-                            )
-                            print(
-                                f"Remaining Cash: "
-                                f"${paper_portfolio.cash:.2f}"
-                            )
-                            print(
-                                f"Portfolio Risk: "
-                                f"${paper_portfolio.calculate_portfolio_risk():.2f}"
+                                "\nPaper trade cancelled."
                             )
                         else:
-                            print(
-                                "\nPaper trade rejected."
+                            execution_result = (
+                                paper_trader.execute_decision(
+                                    decision=decision,
+                                    daily_loss_amount=daily_loss_amount,
+                                )
                             )
-                            print(
-                                f"Reason: "
-                                f"{execution_result['reason']}"
-                            )
 
-    elif manual_choice == "3":
-        if not paper_portfolio.positions:
-            print("\nNo open paper positions to close.")
-        else:
-            print("\nOpen paper positions:")
+                            if execution_result["executed"]:
+                                save_portfolio(paper_portfolio)
 
-            for position in paper_portfolio.positions.values():
-                print(
-                    f"{position.symbol} | "
-                    f"Qty: {position.quantity} | "
-                    f"Entry: ${position.average_price:.2f} | "
-                    f"Stop: ${position.stop_loss:.2f}"
-                )
-
-            selected_symbol = input(
-                "\nEnter symbol to close: "
-            ).strip().upper()
-
-            if selected_symbol not in paper_portfolio.positions:
-                print(
-                    "\nInvalid selection. "
-                    "No position closed."
-                )
-            else:
-                position = paper_portfolio.positions[selected_symbol]
-
-                exit_price_input = input(
-                    f"Enter exit price for {selected_symbol}: $"
-                ).strip()
-
-                try:
-                    exit_price = float(exit_price_input)
-
-                    if exit_price <= 0:
-                        raise ValueError
-
-                except ValueError:
-                    print(
-                        "\nInvalid exit price. "
-                        "No position closed."
-                    )
-                else:
-                    estimated_profit_loss = (
-                        exit_price - position.average_price
-                    ) * position.quantity
-
-                    print(
-                        "\n========== PROPOSED POSITION CLOSE =========="
-                    )
-                    print(f"Symbol: {selected_symbol}")
-                    print(f"Quantity: {position.quantity}")
-                    print(
-                        f"Entry Price: "
-                        f"${position.average_price:.2f}"
-                    )
-                    print(f"Exit Price: ${exit_price:.2f}")
-                    print(
-                        f"Estimated P/L: "
-                        f"${estimated_profit_loss:.2f}"
-                    )
-                    print(
-                        "============================================="
-                    )
-
-                    confirmation = input(
-                        "Type YES to close this paper position: "
-                    ).strip().upper()
-
-                    if confirmation != "YES":
-                        print("\nPosition close cancelled.")
-                    else:
-                        close_result = paper_trader.close_position(
-                            symbol=selected_symbol,
-                            exit_price=exit_price,
-                        )
-
-                        if close_result["executed"]:
-                            save_portfolio(paper_portfolio)
-                            if selected_symbol in open_journal_entries:
-                                open_entry = open_journal_entries[selected_symbol]
-
-                                completed_entry = complete_journal_entry(
-                                    open_entry=open_entry,
-                                    exit_price=exit_price,
-                                    exit_timestamp=datetime.now(),
-                                    exit_reason="MANUAL",
+                                selected_opportunity = next(
+                                    opportunity
+                                    for opportunity in buy_opportunities
+                                    if opportunity["symbol"] == selected_symbol
                                 )
 
-                                append_journal_entry_to_csv(
-                                    completed_entry
+                                open_journal_entry = OpenJournalEntry(
+                                    symbol=decision.symbol,
+                                    entry_timestamp=datetime.now(),
+                                    entry_price=decision.entry_price,
+                                    quantity=position_size.quantity,
+                                    stop_loss=decision.stop_loss,
+                                    take_profit=decision.take_profit,
+                                    risk_reward_ratio=decision.risk_reward_ratio,
+                                    max_loss=position_size.max_loss,
+                                    confidence=decision.confidence,
+                                    agreement=decision.agreement,
+                                    market_regime=decision.market_regime,
+                                    trade_quality_score=selected_opportunity[
+                                        "trade_quality_score"
+                                    ],
+                                    opportunity_score=selected_opportunity[
+                                        "opportunity_score"
+                                    ],
                                 )
 
-                                del open_journal_entries[selected_symbol]
+                                open_journal_entries[
+                                    decision.symbol
+                                ] = open_journal_entry
 
                                 save_open_journal_entries(
                                     open_journal_entries
                                 )
+                                print(
+                                    "\nPaper BUY executed successfully."
+                                )
+                                print(
+                                    f"Symbol: "
+                                    f"{execution_result['symbol']}"
+                                )
+                                print(
+                                    f"Quantity: "
+                                    f"{execution_result['quantity']}"
+                                )
+                                print(
+                                    f"Entry: "
+                                    f"${execution_result['entry_price']:.2f}"
+                                )
+                                print(
+                                    f"Position Value: "
+                                    f"${execution_result['position_value']:.2f}"
+                                )
+                                print(
+                                    f"Maximum Loss: "
+                                    f"${execution_result['max_loss']:.2f}"
+                                )
+                                print(
+                                    f"Remaining Cash: "
+                                    f"${paper_portfolio.cash:.2f}"
+                                )
+                                print(
+                                    f"Portfolio Risk: "
+                                    f"${paper_portfolio.calculate_portfolio_risk():.2f}"
+                                )
                             else:
                                 print(
-                                    "\nJournal note: No open journal entry "
-                                    "was found for this position."
+                                    "\nPaper trade rejected."
                                 )
-                            print(
-                                "\nPaper position closed successfully."
-                            )
-                            print(
-                                f"Symbol: "
-                                f"{close_result['symbol']}"
-                            )
-                            print(
-                                f"Quantity: "
-                                f"{close_result['quantity']}"
-                            )
-                            print(
-                                f"Entry: "
-                                f"${close_result['entry_price']:.2f}"
-                            )
-                            print(
-                                f"Exit: "
-                                f"${close_result['exit_price']:.2f}"
-                            )
-                            print(
-                                f"Realised P/L: "
-                                f"${close_result['realized_profit_loss']:.2f}"
-                            )
-                            print(
-                                f"Available Cash: "
-                                f"${paper_portfolio.cash:.2f}"
-                            )
-                            print(
-                                f"Portfolio Risk: "
-                                f"${paper_portfolio.calculate_portfolio_risk():.2f}"
-                            )
-                            print(
-                                f"Open Positions: "
-                                f"{len(paper_portfolio.positions)}"
-                            )
+                                print(
+                                    f"Reason: "
+                                    f"{execution_result['reason']}"
+                                )
+
+        elif manual_choice == "3":
+            if not paper_portfolio.positions:
+                print("\nNo open paper positions to close.")
+            else:
+                print("\nOpen paper positions:")
+
+                for position in paper_portfolio.positions.values():
+                    print(
+                        f"{position.symbol} | "
+                        f"Qty: {position.quantity} | "
+                        f"Entry: ${position.average_price:.2f} | "
+                        f"Stop: ${position.stop_loss:.2f}"
+                    )
+
+                selected_symbol = input(
+                    "\nEnter symbol to close: "
+                ).strip().upper()
+
+                if selected_symbol not in paper_portfolio.positions:
+                    print(
+                        "\nInvalid selection. "
+                        "No position closed."
+                    )
+                else:
+                    position = paper_portfolio.positions[selected_symbol]
+
+                    exit_price_input = input(
+                        f"Enter exit price for {selected_symbol}: $"
+                    ).strip()
+
+                    try:
+                        exit_price = float(exit_price_input)
+
+                        if exit_price <= 0:
+                            raise ValueError
+
+                    except ValueError:
+                        print(
+                            "\nInvalid exit price. "
+                            "No position closed."
+                        )
+                    else:
+                        estimated_profit_loss = (
+                            exit_price - position.average_price
+                        ) * position.quantity
+
+                        print(
+                            "\n========== PROPOSED POSITION CLOSE =========="
+                        )
+                        print(f"Symbol: {selected_symbol}")
+                        print(f"Quantity: {position.quantity}")
+                        print(
+                            f"Entry Price: "
+                            f"${position.average_price:.2f}"
+                        )
+                        print(f"Exit Price: ${exit_price:.2f}")
+                        print(
+                            f"Estimated P/L: "
+                            f"${estimated_profit_loss:.2f}"
+                        )
+                        print(
+                            "============================================="
+                        )
+
+                        confirmation = input(
+                            "Type YES to close this paper position: "
+                        ).strip().upper()
+
+                        if confirmation != "YES":
+                            print("\nPosition close cancelled.")
                         else:
-                            print(
-                                "\nPosition close rejected."
-                            )
-                            print(
-                                f"Reason: "
-                                f"{close_result['reason']}"
+                            close_result = paper_trader.close_position(
+                                symbol=selected_symbol,
+                                exit_price=exit_price,
                             )
 
-    elif manual_choice == "4":
-        try:
-            performance_report = build_performance_report(
-                portfolio=paper_portfolio,
-                target_date=datetime.now().date(),
-            )
+                            if close_result["executed"]:
+                                save_portfolio(paper_portfolio)
+                                if selected_symbol in open_journal_entries:
+                                    open_entry = open_journal_entries[selected_symbol]
 
-        except (OSError, ValueError) as error:
-            print(
-                "\nUnable to build paper trading "
-                "performance report."
-            )
-            print(f"Reason: {error}")
+                                    completed_entry = complete_journal_entry(
+                                        open_entry=open_entry,
+                                        exit_price=exit_price,
+                                        exit_timestamp=datetime.now(),
+                                        exit_reason="MANUAL",
+                                    )
+
+                                    append_journal_entry_to_csv(
+                                        completed_entry
+                                    )
+
+                                    del open_journal_entries[selected_symbol]
+
+                                    save_open_journal_entries(
+                                        open_journal_entries
+                                    )
+                                else:
+                                    print(
+                                        "\nJournal note: No open journal entry "
+                                        "was found for this position."
+                                    )
+                                print(
+                                    "\nPaper position closed successfully."
+                                )
+                                print(
+                                    f"Symbol: "
+                                    f"{close_result['symbol']}"
+                                )
+                                print(
+                                    f"Quantity: "
+                                    f"{close_result['quantity']}"
+                                )
+                                print(
+                                    f"Entry: "
+                                    f"${close_result['entry_price']:.2f}"
+                                )
+                                print(
+                                    f"Exit: "
+                                    f"${close_result['exit_price']:.2f}"
+                                )
+                                print(
+                                    f"Realised P/L: "
+                                    f"${close_result['realized_profit_loss']:.2f}"
+                                )
+                                print(
+                                    f"Available Cash: "
+                                    f"${paper_portfolio.cash:.2f}"
+                                )
+                                print(
+                                    f"Portfolio Risk: "
+                                    f"${paper_portfolio.calculate_portfolio_risk():.2f}"
+                                )
+                                print(
+                                    f"Open Positions: "
+                                    f"{len(paper_portfolio.positions)}"
+                                )
+                            else:
+                                print(
+                                    "\nPosition close rejected."
+                                )
+                                print(
+                                    f"Reason: "
+                                    f"{close_result['reason']}"
+                                )
+
+        elif manual_choice == "4":
+            try:
+                performance_report = build_performance_report(
+                    portfolio=paper_portfolio,
+                    target_date=datetime.now().date(),
+                )
+
+            except (OSError, ValueError) as error:
+                print(
+                    "\nUnable to build paper trading "
+                    "performance report."
+                )
+                print(f"Reason: {error}")
+
+            else:
+                print(
+                    "\n========== PAPER TRADING PERFORMANCE =========="
+                )
+
+                print(
+                    f"Initial Capital: "
+                    f"${performance_report['initial_cash']:.2f}"
+                )
+                print(
+                    f"Available Cash: "
+                    f"${performance_report['available_cash']:.2f}"
+                )
+                print(
+                    f"Invested Capital: "
+                    f"${performance_report['invested_capital']:.2f}"
+                )
+                print(
+                    f"Open Positions: "
+                    f"{performance_report['open_positions']}"
+                )
+                print(
+                    f"Portfolio Risk: "
+                    f"${performance_report['portfolio_risk']:.2f}"
+                )
+
+                print("-----------------------------------------------")
+
+                print(
+                    f"Completed Trades: "
+                    f"{performance_report['completed_trades']}"
+                )
+                print(
+                    f"Profitable Trades: "
+                    f"{performance_report['profitable_trades']}"
+                )
+                print(
+                    f"Losing Trades: "
+                    f"{performance_report['losing_trades']}"
+                )
+                print(
+                    f"Breakeven Trades: "
+                    f"{performance_report['breakeven_trades']}"
+                )
+                print(
+                    f"Win Rate: "
+                    f"{performance_report['win_rate']:.2f}%"
+                )
+                print(
+                    f"Total Realised P/L: "
+                    f"${performance_report['total_realized_profit_loss']:.2f}"
+                )
+                print(
+                    f"Average Return: "
+                    f"{performance_report['average_return_percent']:.2f}%"
+                )
+
+                print("-----------------------------------------------")
+
+                print(
+                    f"Today's Realised Loss: "
+                    f"${performance_report['daily_realized_loss']:.2f}"
+                )
+                print(
+                    f"Daily Loss Limit: "
+                    f"${performance_report['maximum_daily_loss']:.2f}"
+                )
+                print(
+                    f"Remaining Daily Loss Allowance: "
+                    f"${performance_report['remaining_daily_loss_allowance']:.2f}"
+                )
+
+                print(
+                    "================================================"
+                )
+
+        elif manual_choice == "5":
+            print("\nExiting Manual Paper Trading Mode.")
+            break
 
         else:
-            print(
-                "\n========== PAPER TRADING PERFORMANCE =========="
-            )
-
-            print(
-                f"Initial Capital: "
-                f"${performance_report['initial_cash']:.2f}"
-            )
-            print(
-                f"Available Cash: "
-                f"${performance_report['available_cash']:.2f}"
-            )
-            print(
-                f"Invested Capital: "
-                f"${performance_report['invested_capital']:.2f}"
-            )
-            print(
-                f"Open Positions: "
-                f"{performance_report['open_positions']}"
-            )
-            print(
-                f"Portfolio Risk: "
-                f"${performance_report['portfolio_risk']:.2f}"
-            )
-
-            print("-----------------------------------------------")
-
-            print(
-                f"Completed Trades: "
-                f"{performance_report['completed_trades']}"
-            )
-            print(
-                f"Profitable Trades: "
-                f"{performance_report['profitable_trades']}"
-            )
-            print(
-                f"Losing Trades: "
-                f"{performance_report['losing_trades']}"
-            )
-            print(
-                f"Breakeven Trades: "
-                f"{performance_report['breakeven_trades']}"
-            )
-            print(
-                f"Win Rate: "
-                f"{performance_report['win_rate']:.2f}%"
-            )
-            print(
-                f"Total Realised P/L: "
-                f"${performance_report['total_realized_profit_loss']:.2f}"
-            )
-            print(
-                f"Average Return: "
-                f"{performance_report['average_return_percent']:.2f}%"
-            )
-
-            print("-----------------------------------------------")
-
-            print(
-                f"Today's Realised Loss: "
-                f"${performance_report['daily_realized_loss']:.2f}"
-            )
-            print(
-                f"Daily Loss Limit: "
-                f"${performance_report['maximum_daily_loss']:.2f}"
-            )
-            print(
-                f"Remaining Daily Loss Allowance: "
-                f"${performance_report['remaining_daily_loss_allowance']:.2f}"
-            )
-
-            print(
-                "================================================"
-            )
-
-    elif manual_choice == "5":
-        print("\nExiting Manual Paper Trading Mode.")
-
-    else:
-        print("\nInvalid option. No paper trading action taken.")
+            print("\nInvalid option. No paper trading action taken.")
     end_time = time.time()
     total_time = end_time - start_time
 
