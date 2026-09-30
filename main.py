@@ -192,6 +192,10 @@ def analyse_stock(
         "supertrend_signal": strategy_signal_map.get("SuperTrend_Strategy", "N/A"),
         "trade_quality_score": trade_quality["trade_quality_score"],
         "trade_quality_label": trade_quality["trade_quality_label"],
+
+        "trend_strength_score": trend_strength["trend_strength_score"],
+        "trend_strength_label": trend_strength["trend_strength_label"],
+
         "volume_ratio": volume_strength["volume_ratio"],
         "volume_strength_score": volume_strength["volume_strength_score"],
         "volume_strength_label": volume_strength["volume_strength_label"],
@@ -693,6 +697,12 @@ def main() -> None:
                                     ],
                                     opportunity_score=selected_opportunity[
                                         "opportunity_score"
+                                    ],
+                                    trend_strength_score=selected_opportunity[
+                                        "trend_strength_score"
+                                    ],
+                                    trend_strength_label=selected_opportunity[
+                                        "trend_strength_label"
                                     ],
                                 )
 

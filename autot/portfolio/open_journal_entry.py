@@ -34,3 +34,6 @@ class OpenJournalEntry:
 
     trade_quality_score: float
     opportunity_score: float
+
+    trend_strength_score: float = 0.0
+    trend_strength_label: str = "UNKNOWN"

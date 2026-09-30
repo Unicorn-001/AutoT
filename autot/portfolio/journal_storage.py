@@ -46,6 +46,8 @@ def save_open_journal_entries(
             "market_regime": entry.market_regime,
             "trade_quality_score": entry.trade_quality_score,
             "opportunity_score": entry.opportunity_score,
+            "trend_strength_score": entry.trend_strength_score,
+            "trend_strength_label": entry.trend_strength_label,
         }
 
     with path.open("w", encoding="utf-8") as file:
@@ -88,6 +90,14 @@ def load_open_journal_entries(
             market_regime=item["market_regime"],
             trade_quality_score=item["trade_quality_score"],
             opportunity_score=item["opportunity_score"],
+            trend_strength_score=item.get(
+                "trend_strength_score",
+                0.0,
+            ),
+            trend_strength_label=item.get(
+                "trend_strength_label",
+                "UNKNOWN",
+            ),
         )
 
     return entries

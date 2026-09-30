@@ -71,6 +71,8 @@ def save_journal_entries_to_csv(
             "return_percent": entry.return_percent,
             "outcome": entry.outcome,
             "exit_reason": entry.exit_reason,
+            "trend_strength_score": entry.trend_strength_score,
+            "trend_strength_label": entry.trend_strength_label,
         })
 
     df = pd.DataFrame(rows)
@@ -109,6 +111,8 @@ def append_journal_entry_to_csv(
         "return_percent": entry.return_percent,
         "outcome": entry.outcome,
         "exit_reason": entry.exit_reason,
+        "trend_strength_score": entry.trend_strength_score,
+        "trend_strength_label": entry.trend_strength_label,
     }
 
     file_exists = path.exists()
@@ -182,6 +186,8 @@ def complete_journal_entry(
         ),
         outcome=outcome,
         exit_reason=exit_reason,
+        trend_strength_score=open_entry.trend_strength_score,
+        trend_strength_label=open_entry.trend_strength_label,
     )
 
 

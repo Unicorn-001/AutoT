@@ -44,3 +44,6 @@ class JournalEntry:
 
     outcome: str
     exit_reason: str
+
+    trend_strength_score: float = 0.0
+    trend_strength_label: str = "UNKNOWN"
