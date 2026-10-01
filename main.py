@@ -704,6 +704,18 @@ def main() -> None:
                                     trend_strength_label=selected_opportunity[
                                         "trend_strength_label"
                                     ],
+                                    volume_ratio=selected_opportunity[
+                                        "volume_ratio"
+                                    ],
+                                    volume_strength_score=selected_opportunity[
+                                        "volume_strength_score"
+                                    ],
+                                    volume_strength_label=selected_opportunity[
+                                        "volume_strength_label"
+                                    ],
+                                    volume_confirmed=selected_opportunity[
+                                        "volume_confirmed"
+                                    ],
                                 )
 
                                 open_journal_entries[

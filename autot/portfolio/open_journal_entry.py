@@ -37,3 +37,8 @@ class OpenJournalEntry:
 
     trend_strength_score: float = 0.0
     trend_strength_label: str = "UNKNOWN"
+
+    volume_ratio: float = 0.0
+    volume_strength_score: float = 0.0
+    volume_strength_label: str = "UNKNOWN"
+    volume_confirmed: bool = False

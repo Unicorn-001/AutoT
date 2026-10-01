@@ -48,6 +48,10 @@ def save_open_journal_entries(
             "opportunity_score": entry.opportunity_score,
             "trend_strength_score": entry.trend_strength_score,
             "trend_strength_label": entry.trend_strength_label,
+            "volume_ratio": entry.volume_ratio,
+            "volume_strength_score": entry.volume_strength_score,
+            "volume_strength_label": entry.volume_strength_label,
+            "volume_confirmed": entry.volume_confirmed,
         }
 
     with path.open("w", encoding="utf-8") as file:
@@ -97,6 +101,22 @@ def load_open_journal_entries(
             trend_strength_label=item.get(
                 "trend_strength_label",
                 "UNKNOWN",
+            ),
+            volume_ratio=item.get(
+                "volume_ratio",
+                0.0,
+            ),
+            volume_strength_score=item.get(
+                "volume_strength_score",
+                0.0,
+            ),
+            volume_strength_label=item.get(
+                "volume_strength_label",
+                "UNKNOWN",
+            ),
+            volume_confirmed=item.get(
+                "volume_confirmed",
+                False,
             ),
         )
 

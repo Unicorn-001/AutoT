@@ -73,6 +73,10 @@ def save_journal_entries_to_csv(
             "exit_reason": entry.exit_reason,
             "trend_strength_score": entry.trend_strength_score,
             "trend_strength_label": entry.trend_strength_label,
+            "volume_ratio": entry.volume_ratio,
+            "volume_strength_score": entry.volume_strength_score,
+            "volume_strength_label": entry.volume_strength_label,
+            "volume_confirmed": entry.volume_confirmed,
         })
 
     df = pd.DataFrame(rows)
@@ -113,6 +117,10 @@ def append_journal_entry_to_csv(
         "exit_reason": entry.exit_reason,
         "trend_strength_score": entry.trend_strength_score,
         "trend_strength_label": entry.trend_strength_label,
+        "volume_ratio": entry.volume_ratio,
+        "volume_strength_score": entry.volume_strength_score,
+        "volume_strength_label": entry.volume_strength_label,
+        "volume_confirmed": entry.volume_confirmed,
     }
 
     file_exists = path.exists()
@@ -188,6 +196,10 @@ def complete_journal_entry(
         exit_reason=exit_reason,
         trend_strength_score=open_entry.trend_strength_score,
         trend_strength_label=open_entry.trend_strength_label,
+        volume_ratio=open_entry.volume_ratio,
+        volume_strength_score=open_entry.volume_strength_score,
+        volume_strength_label=open_entry.volume_strength_label,
+        volume_confirmed=open_entry.volume_confirmed,
     )
 
 
