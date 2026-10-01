@@ -42,3 +42,9 @@ class OpenJournalEntry:
     volume_strength_score: float = 0.0
     volume_strength_label: str = "UNKNOWN"
     volume_confirmed: bool = False
+
+    stock_return_percent: float = 0.0
+    benchmark_return_percent: float = 0.0
+    relative_strength_percent: float = 0.0
+    relative_strength_score: float = 0.0
+    relative_strength_label: str = "UNKNOWN"

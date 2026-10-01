@@ -77,6 +77,11 @@ def save_journal_entries_to_csv(
             "volume_strength_score": entry.volume_strength_score,
             "volume_strength_label": entry.volume_strength_label,
             "volume_confirmed": entry.volume_confirmed,
+            "stock_return_percent": entry.stock_return_percent,
+            "benchmark_return_percent": entry.benchmark_return_percent,
+            "relative_strength_percent": entry.relative_strength_percent,
+            "relative_strength_score": entry.relative_strength_score,
+            "relative_strength_label": entry.relative_strength_label,
         })
 
     df = pd.DataFrame(rows)
@@ -121,6 +126,11 @@ def append_journal_entry_to_csv(
         "volume_strength_score": entry.volume_strength_score,
         "volume_strength_label": entry.volume_strength_label,
         "volume_confirmed": entry.volume_confirmed,
+        "stock_return_percent": entry.stock_return_percent,
+        "benchmark_return_percent": entry.benchmark_return_percent,
+        "relative_strength_percent": entry.relative_strength_percent,
+        "relative_strength_score": entry.relative_strength_score,
+        "relative_strength_label": entry.relative_strength_label,
     }
 
     file_exists = path.exists()
@@ -200,6 +210,11 @@ def complete_journal_entry(
         volume_strength_score=open_entry.volume_strength_score,
         volume_strength_label=open_entry.volume_strength_label,
         volume_confirmed=open_entry.volume_confirmed,
+        stock_return_percent=open_entry.stock_return_percent,
+        benchmark_return_percent=open_entry.benchmark_return_percent,
+        relative_strength_percent=open_entry.relative_strength_percent,
+        relative_strength_score=open_entry.relative_strength_score,
+        relative_strength_label=open_entry.relative_strength_label,
     )
 
 

@@ -716,6 +716,21 @@ def main() -> None:
                                     volume_confirmed=selected_opportunity[
                                         "volume_confirmed"
                                     ],
+                                    stock_return_percent=selected_opportunity[
+                                        "stock_return_percent"
+                                    ],
+                                    benchmark_return_percent=selected_opportunity[
+                                        "benchmark_return_percent"
+                                    ],
+                                    relative_strength_percent=selected_opportunity[
+                                        "relative_strength_percent"
+                                    ],
+                                    relative_strength_score=selected_opportunity[
+                                        "relative_strength_score"
+                                    ],
+                                    relative_strength_label=selected_opportunity[
+                                        "relative_strength_label"
+                                    ],
                                 )
 
                                 open_journal_entries[

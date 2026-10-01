@@ -52,6 +52,11 @@ def save_open_journal_entries(
             "volume_strength_score": entry.volume_strength_score,
             "volume_strength_label": entry.volume_strength_label,
             "volume_confirmed": entry.volume_confirmed,
+            "stock_return_percent": entry.stock_return_percent,
+            "benchmark_return_percent": entry.benchmark_return_percent,
+            "relative_strength_percent": entry.relative_strength_percent,
+            "relative_strength_score": entry.relative_strength_score,
+            "relative_strength_label": entry.relative_strength_label,
         }
 
     with path.open("w", encoding="utf-8") as file:
@@ -117,6 +122,26 @@ def load_open_journal_entries(
             volume_confirmed=item.get(
                 "volume_confirmed",
                 False,
+            ),
+            stock_return_percent=item.get(
+                "stock_return_percent",
+                0.0,
+            ),
+            benchmark_return_percent=item.get(
+                "benchmark_return_percent",
+                0.0,
+            ),
+            relative_strength_percent=item.get(
+                "relative_strength_percent",
+                0.0,
+            ),
+            relative_strength_score=item.get(
+                "relative_strength_score",
+                0.0,
+            ),
+            relative_strength_label=item.get(
+                "relative_strength_label",
+                "UNKNOWN",
             ),
         )
 
