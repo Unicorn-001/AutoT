@@ -179,3 +179,76 @@ def test_complete_trade_journal_lifecycle(tmp_path):
     assert "STRONG_VOLUME" in content
     assert "FAVOURABLE" in content
     assert "88.75" in content
+
+
+def test_old_open_journal_loads_with_context_defaults(tmp_path):
+    """
+    Verify that an older open-journal record created before the
+    analysis-context fields existed can still be loaded safely.
+    """
+
+    import json
+
+    json_file = tmp_path / "old_open_journal.json"
+
+    old_entry = {
+        "MPC": {
+            "symbol": "MPC",
+            "entry_timestamp": "2026-09-30T10:00:00",
+            "entry_price": 170.0,
+            "quantity": 5,
+            "stop_loss": 165.0,
+            "take_profit": 180.0,
+            "risk_reward_ratio": 2.0,
+            "max_loss": 25.0,
+            "confidence": 80.0,
+            "agreement": 75.0,
+            "market_regime": "UPTREND",
+            "trade_quality_score": 85.74,
+            "opportunity_score": 89.44
+        }
+    }
+
+    json_file.write_text(
+        json.dumps(old_entry),
+        encoding="utf-8",
+    )
+
+    entries = load_open_journal_entries(
+        file_path=str(json_file),
+    )
+
+    assert "MPC" in entries
+
+    entry = entries["MPC"]
+
+    # Existing fields must survive.
+    assert entry.symbol == "MPC"
+    assert entry.trade_quality_score == 85.74
+    assert entry.opportunity_score == 89.44
+
+    # Trend-strength defaults.
+    assert entry.trend_strength_score == 0.0
+    assert entry.trend_strength_label == "UNKNOWN"
+
+    # Volume-strength defaults.
+    assert entry.volume_ratio == 0.0
+    assert entry.volume_strength_score == 0.0
+    assert entry.volume_strength_label == "UNKNOWN"
+    assert entry.volume_confirmed is False
+
+    # Relative-strength defaults.
+    assert entry.stock_return_percent == 0.0
+    assert entry.benchmark_return_percent == 0.0
+    assert entry.relative_strength_percent == 0.0
+    assert entry.relative_strength_score == 0.0
+    assert entry.relative_strength_label == "UNKNOWN"
+
+    # Support/resistance and breakout defaults.
+    assert entry.nearest_support == 0.0
+    assert entry.nearest_resistance == 0.0
+    assert entry.distance_to_support_percent == 0.0
+    assert entry.distance_to_resistance_percent == 0.0
+    assert entry.support_resistance_score == 0.0
+    assert entry.support_resistance_label == "UNKNOWN"
+    assert entry.breakout_confirmation_score == 0.0
