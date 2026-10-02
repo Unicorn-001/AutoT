@@ -82,6 +82,13 @@ def save_journal_entries_to_csv(
             "relative_strength_percent": entry.relative_strength_percent,
             "relative_strength_score": entry.relative_strength_score,
             "relative_strength_label": entry.relative_strength_label,
+            "nearest_support": entry.nearest_support,
+            "nearest_resistance": entry.nearest_resistance,
+            "distance_to_support_percent": entry.distance_to_support_percent,
+            "distance_to_resistance_percent": entry.distance_to_resistance_percent,
+            "support_resistance_score": entry.support_resistance_score,
+            "support_resistance_label": entry.support_resistance_label,
+            "breakout_confirmation_score": entry.breakout_confirmation_score,
         })
 
     df = pd.DataFrame(rows)
@@ -131,6 +138,13 @@ def append_journal_entry_to_csv(
         "relative_strength_percent": entry.relative_strength_percent,
         "relative_strength_score": entry.relative_strength_score,
         "relative_strength_label": entry.relative_strength_label,
+        "nearest_support": entry.nearest_support,
+        "nearest_resistance": entry.nearest_resistance,
+        "distance_to_support_percent": entry.distance_to_support_percent,
+        "distance_to_resistance_percent": entry.distance_to_resistance_percent,
+        "support_resistance_score": entry.support_resistance_score,
+        "support_resistance_label": entry.support_resistance_label,
+        "breakout_confirmation_score": entry.breakout_confirmation_score,
     }
 
     file_exists = path.exists()
@@ -215,6 +229,13 @@ def complete_journal_entry(
         relative_strength_percent=open_entry.relative_strength_percent,
         relative_strength_score=open_entry.relative_strength_score,
         relative_strength_label=open_entry.relative_strength_label,
+        nearest_support=open_entry.nearest_support,
+        nearest_resistance=open_entry.nearest_resistance,
+        distance_to_support_percent=open_entry.distance_to_support_percent,
+        distance_to_resistance_percent=open_entry.distance_to_resistance_percent,
+        support_resistance_score=open_entry.support_resistance_score,
+        support_resistance_label=open_entry.support_resistance_label,
+        breakout_confirmation_score=open_entry.breakout_confirmation_score,
     )
 
 

@@ -57,6 +57,13 @@ def save_open_journal_entries(
             "relative_strength_percent": entry.relative_strength_percent,
             "relative_strength_score": entry.relative_strength_score,
             "relative_strength_label": entry.relative_strength_label,
+            "nearest_support": entry.nearest_support,
+            "nearest_resistance": entry.nearest_resistance,
+            "distance_to_support_percent": entry.distance_to_support_percent,
+            "distance_to_resistance_percent": entry.distance_to_resistance_percent,
+            "support_resistance_score": entry.support_resistance_score,
+            "support_resistance_label": entry.support_resistance_label,
+            "breakout_confirmation_score": entry.breakout_confirmation_score,
         }
 
     with path.open("w", encoding="utf-8") as file:
@@ -142,6 +149,34 @@ def load_open_journal_entries(
             relative_strength_label=item.get(
                 "relative_strength_label",
                 "UNKNOWN",
+            ),
+            nearest_support=item.get(
+                "nearest_support",
+                0.0,
+            ),
+            nearest_resistance=item.get(
+                "nearest_resistance",
+                0.0,
+            ),
+            distance_to_support_percent=item.get(
+                "distance_to_support_percent",
+                0.0,
+            ),
+            distance_to_resistance_percent=item.get(
+                "distance_to_resistance_percent",
+                0.0,
+            ),
+            support_resistance_score=item.get(
+                "support_resistance_score",
+                0.0,
+            ),
+            support_resistance_label=item.get(
+                "support_resistance_label",
+                "UNKNOWN",
+            ),
+            breakout_confirmation_score=item.get(
+                "breakout_confirmation_score",
+                0.0,
             ),
         )
 

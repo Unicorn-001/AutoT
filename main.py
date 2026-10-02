@@ -731,6 +731,27 @@ def main() -> None:
                                     relative_strength_label=selected_opportunity[
                                         "relative_strength_label"
                                     ],
+                                    nearest_support=selected_opportunity[
+                                        "nearest_support"
+                                    ],
+                                    nearest_resistance=selected_opportunity[
+                                        "nearest_resistance"
+                                    ],
+                                    distance_to_support_percent=selected_opportunity[
+                                        "distance_to_support_percent"
+                                    ],
+                                    distance_to_resistance_percent=selected_opportunity[
+                                        "distance_to_resistance_percent"
+                                    ],
+                                    support_resistance_score=selected_opportunity[
+                                        "support_resistance_score"
+                                    ],
+                                    support_resistance_label=selected_opportunity[
+                                        "support_resistance_label"
+                                    ],
+                                    breakout_confirmation_score=selected_opportunity[
+                                        "breakout_confirmation_score"
+                                    ],
                                 )
 
                                 open_journal_entries[

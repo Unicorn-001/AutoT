@@ -48,3 +48,11 @@ class OpenJournalEntry:
     relative_strength_percent: float = 0.0
     relative_strength_score: float = 0.0
     relative_strength_label: str = "UNKNOWN"
+
+    nearest_support: float = 0.0
+    nearest_resistance: float = 0.0
+    distance_to_support_percent: float = 0.0
+    distance_to_resistance_percent: float = 0.0
+    support_resistance_score: float = 0.0
+    support_resistance_label: str = "UNKNOWN"
+    breakout_confirmation_score: float = 0.0
