@@ -193,3 +193,247 @@ def test_very_low_volume():
     assert result["volume_strength_score"] == 10.0
     assert result["volume_strength_label"] == "VERY_LOW_VOLUME"
     assert result["volume_confirmed"] is False
+
+
+# =========================================================
+# Relative Strength
+# =========================================================
+
+from autot.relative_strength.relative_strength_engine import (
+    RelativeStrengthEngine,
+)
+
+
+def make_close_data(
+    start_price,
+    end_price,
+    periods=61,
+):
+    """
+    Create deterministic Close-price data for the
+    engine's default 60-period relative-strength lookback.
+    """
+
+    middle_count = periods - 2
+
+    prices = (
+        [start_price]
+        + [start_price] * middle_count
+        + [end_price]
+    )
+
+    columns = pd.MultiIndex.from_tuples(
+        [
+            ("Close", "TEST"),
+        ]
+    )
+
+    return pd.DataFrame(
+        prices,
+        columns=columns,
+    )
+
+
+def test_relative_strength_very_strong_outperformance():
+    stock_data = make_close_data(
+        start_price=100.0,
+        end_price=120.0,
+    )
+
+    benchmark_data = make_close_data(
+        start_price=100.0,
+        end_price=105.0,
+    )
+
+    result = RelativeStrengthEngine.calculate(
+        stock_data=stock_data,
+        benchmark_data=benchmark_data,
+    )
+
+    assert result["stock_return_percent"] == 20.0
+    assert result["benchmark_return_percent"] == 5.0
+    assert result["relative_strength_percent"] == 15.0
+    assert result["relative_strength_score"] == 100.0
+    assert (
+        result["relative_strength_label"]
+        == "VERY_STRONG_OUTPERFORMANCE"
+    )
+
+
+def test_relative_strength_outperforming():
+    stock_data = make_close_data(
+        start_price=100.0,
+        end_price=110.0,
+    )
+
+    benchmark_data = make_close_data(
+        start_price=100.0,
+        end_price=105.0,
+    )
+
+    result = RelativeStrengthEngine.calculate(
+        stock_data=stock_data,
+        benchmark_data=benchmark_data,
+    )
+
+    assert result["stock_return_percent"] == 10.0
+    assert result["benchmark_return_percent"] == 5.0
+    assert result["relative_strength_percent"] == 5.0
+    assert result["relative_strength_score"] == 70.0
+    assert result["relative_strength_label"] == "OUTPERFORMING"
+
+
+def test_relative_strength_equal_performance():
+    stock_data = make_close_data(
+        start_price=100.0,
+        end_price=105.0,
+    )
+
+    benchmark_data = make_close_data(
+        start_price=100.0,
+        end_price=105.0,
+    )
+
+    result = RelativeStrengthEngine.calculate(
+        stock_data=stock_data,
+        benchmark_data=benchmark_data,
+    )
+
+    assert result["stock_return_percent"] == 5.0
+    assert result["benchmark_return_percent"] == 5.0
+    assert result["relative_strength_percent"] == 0.0
+    assert result["relative_strength_score"] == 55.0
+    assert (
+        result["relative_strength_label"]
+        == "SLIGHTLY_OUTPERFORMING"
+    )
+
+
+def test_relative_strength_underperforming():
+    stock_data = make_close_data(
+        start_price=100.0,
+        end_price=95.0,
+    )
+
+    benchmark_data = make_close_data(
+        start_price=100.0,
+        end_price=105.0,
+    )
+
+    result = RelativeStrengthEngine.calculate(
+        stock_data=stock_data,
+        benchmark_data=benchmark_data,
+    )
+
+    assert result["stock_return_percent"] == -5.0
+    assert result["benchmark_return_percent"] == 5.0
+    assert result["relative_strength_percent"] == -10.0
+    assert result["relative_strength_score"] == 25.0
+    assert result["relative_strength_label"] == "UNDERPERFORMING"
+
+
+def test_relative_strength_insufficient_stock_data():
+    stock_data = make_close_data(
+        start_price=100.0,
+        end_price=110.0,
+        periods=60,
+    )
+
+    benchmark_data = make_close_data(
+        start_price=100.0,
+        end_price=105.0,
+        periods=61,
+    )
+
+    result = RelativeStrengthEngine.calculate(
+        stock_data=stock_data,
+        benchmark_data=benchmark_data,
+    )
+
+    assert result["stock_return_percent"] == 0.0
+    assert result["benchmark_return_percent"] == 0.0
+    assert result["relative_strength_percent"] == 0.0
+    assert result["relative_strength_score"] == 0.0
+    assert (
+        result["relative_strength_label"]
+        == "INSUFFICIENT_DATA"
+    )
+
+
+def test_relative_strength_custom_lookback():
+    stock_data = make_close_data(
+        start_price=100.0,
+        end_price=115.0,
+        periods=21,
+    )
+
+    benchmark_data = make_close_data(
+        start_price=100.0,
+        end_price=105.0,
+        periods=21,
+    )
+
+    result = RelativeStrengthEngine.calculate(
+        stock_data=stock_data,
+        benchmark_data=benchmark_data,
+        lookback=20,
+    )
+
+    assert result["stock_return_percent"] == 15.0
+    assert result["benchmark_return_percent"] == 5.0
+    assert result["relative_strength_percent"] == 10.0
+    assert result["relative_strength_score"] == 85.0
+    assert (
+        result["relative_strength_label"]
+        == "STRONG_OUTPERFORMANCE"
+    )
+
+
+def test_relative_strength_missing_close_column():
+    stock_data = pd.DataFrame(
+        {
+            "Volume": [1000.0] * 61,
+        }
+    )
+
+    benchmark_data = make_close_data(
+        start_price=100.0,
+        end_price=105.0,
+    )
+
+    result = RelativeStrengthEngine.calculate(
+        stock_data=stock_data,
+        benchmark_data=benchmark_data,
+    )
+
+    assert result["stock_return_percent"] == 0.0
+    assert result["benchmark_return_percent"] == 0.0
+    assert result["relative_strength_percent"] == 0.0
+    assert result["relative_strength_score"] == 0.0
+    assert result["relative_strength_label"] == "NO_CLOSE_DATA"
+
+
+def test_relative_strength_zero_start_price():
+    stock_data = make_close_data(
+        start_price=0.0,
+        end_price=100.0,
+    )
+
+    benchmark_data = make_close_data(
+        start_price=100.0,
+        end_price=105.0,
+    )
+
+    result = RelativeStrengthEngine.calculate(
+        stock_data=stock_data,
+        benchmark_data=benchmark_data,
+    )
+
+    assert result["stock_return_percent"] == 0.0
+    assert result["benchmark_return_percent"] == 0.0
+    assert result["relative_strength_percent"] == 0.0
+    assert result["relative_strength_score"] == 0.0
+    assert (
+        result["relative_strength_label"]
+        == "INVALID_START_PRICE"
+    )

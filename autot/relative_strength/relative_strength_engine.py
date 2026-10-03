@@ -30,6 +30,18 @@ class RelativeStrengthEngine:
                 "relative_strength_label": "INSUFFICIENT_DATA",
             }
 
+        if (
+            "Close" not in stock_data.columns
+            or "Close" not in benchmark_data.columns
+        ):
+            return {
+                "stock_return_percent": 0.0,
+                "benchmark_return_percent": 0.0,
+                "relative_strength_percent": 0.0,
+                "relative_strength_score": 0.0,
+                "relative_strength_label": "NO_CLOSE_DATA",
+            }
+
         stock_close = stock_data["Close"]
         benchmark_close = benchmark_data["Close"]
 
@@ -67,6 +79,15 @@ class RelativeStrengthEngine:
         benchmark_end = float(
             benchmark_close.iloc[-1]
         )
+
+        if stock_start <= 0 or benchmark_start <= 0:
+            return {
+                "stock_return_percent": 0.0,
+                "benchmark_return_percent": 0.0,
+                "relative_strength_percent": 0.0,
+                "relative_strength_score": 0.0,
+                "relative_strength_label": "INVALID_START_PRICE",
+            }
 
         stock_return = (
             (stock_end - stock_start)
