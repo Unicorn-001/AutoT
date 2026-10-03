@@ -17,6 +17,11 @@ class BreakoutStrategy(StrategyInterface):
     """
 
     def __init__(self, lookback_period: int = 20) -> None:
+        if lookback_period <= 0:
+            raise ValueError(
+                "lookback_period must be greater than zero."
+            )
+
         self.lookback_period = lookback_period
 
     def generate_signal(self, data: pd.DataFrame) -> dict:
@@ -24,6 +29,27 @@ class BreakoutStrategy(StrategyInterface):
             return {
                 "signal": "HOLD",
                 "reason": "Not enough data for breakout calculation.",
+                "confidence": 0.0,
+            }
+
+        if "Close" not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing Close data.",
+                "confidence": 0.0,
+            }
+
+        if "High" not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing High data.",
+                "confidence": 0.0,
+            }
+
+        if "Low" not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing Low data.",
                 "confidence": 0.0,
             }
 
@@ -40,6 +66,13 @@ class BreakoutStrategy(StrategyInterface):
             low_series = low_series.iloc[:, 0]
 
         latest_close = close_series.iloc[-1]
+
+        if pd.isna(latest_close) or latest_close <= 0:
+            return {
+                "signal": "HOLD",
+                "reason": "Invalid latest close price.",
+                "confidence": 0.0,
+            }
 
         previous_high = high_series.iloc[
             -(self.lookback_period + 1):-1
