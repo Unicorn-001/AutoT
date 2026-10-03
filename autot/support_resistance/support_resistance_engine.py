@@ -24,15 +24,35 @@ class SupportResistanceEngine:
         pivot_window: int = 3,
     ) -> dict:
 
-        if len(data) < lookback + (pivot_window * 2):
+        if lookback <= 0:
+            raise ValueError("lookback must be greater than zero.")
+
+        if pivot_window <= 0:
+            raise ValueError(
+                "pivot_window must be greater than zero."
+            )
+
+        def empty_result(label: str) -> dict:
             return {
                 "nearest_support": 0.0,
                 "nearest_resistance": 0.0,
                 "distance_to_support_percent": 0.0,
                 "distance_to_resistance_percent": 0.0,
                 "support_resistance_score": 0.0,
-                "support_resistance_label": "INSUFFICIENT_DATA",
+                "support_resistance_label": label,
             }
+
+        if len(data) < lookback + (pivot_window * 2):
+            return empty_result("INSUFFICIENT_DATA")
+
+        if "Close" not in data.columns:
+            return empty_result("NO_CLOSE_DATA")
+
+        if "High" not in data.columns:
+            return empty_result("NO_HIGH_DATA")
+
+        if "Low" not in data.columns:
+            return empty_result("NO_LOW_DATA")
 
         close_series = data["Close"]
         high_series = data["High"]
@@ -63,6 +83,9 @@ class SupportResistanceEngine:
         )
 
         latest_close = float(close_series.iloc[-1])
+
+        if pd.isna(latest_close) or latest_close <= 0:
+            return empty_result("INVALID_CLOSE_PRICE")
 
         recent_highs = high_series.iloc[-lookback:]
         recent_lows = low_series.iloc[-lookback:]

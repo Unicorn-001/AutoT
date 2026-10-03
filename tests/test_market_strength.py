@@ -3,6 +3,7 @@ Regression tests for AutoT market-strength engines.
 """
 
 import pandas as pd
+import pytest
 
 from autot.trend_strength.trend_strength_engine import (
     TrendStrengthEngine,
@@ -437,3 +438,380 @@ def test_relative_strength_zero_start_price():
         result["relative_strength_label"]
         == "INVALID_START_PRICE"
     )
+
+
+# =========================================================
+# Support / Resistance
+# =========================================================
+
+from autot.support_resistance.support_resistance_engine import (
+    SupportResistanceEngine,
+)
+
+
+def make_support_resistance_data(
+    latest_close=100.0,
+    resistance=110.0,
+    support=90.0,
+    periods=70,
+):
+    """
+    Create deterministic OHLC data containing one clear
+    pivot support and one clear pivot resistance.
+    """
+
+    close = [100.0] * periods
+
+    # Use non-flat background values so ordinary points
+    # are not falsely detected as pivots.
+    high = [
+        100.5 + (i * 0.001)
+        for i in range(periods)
+    ]
+    low = [
+        99.5 + (i * 0.001)
+        for i in range(periods)
+    ]
+
+    # Create one clear pivot high.
+    high[-20] = resistance
+
+    # Create one clear pivot low.
+    low[-40] = support
+
+    close[-1] = latest_close
+
+    return pd.DataFrame(
+        {
+            "Close": close,
+            "High": high,
+            "Low": low,
+        }
+    )
+
+def test_support_resistance_buy_with_excellent_room():
+    data = make_support_resistance_data(
+        latest_close=100.0,
+        resistance=110.0,
+        support=90.0,
+    )
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="BUY",
+    )
+
+    assert result["nearest_support"] == 90.0
+    assert result["nearest_resistance"] == 110.0
+    assert result["distance_to_support_percent"] == 10.0
+    assert result["distance_to_resistance_percent"] == 10.0
+    assert result["support_resistance_score"] == 100.0
+    assert result["support_resistance_label"] == "EXCELLENT_ROOM"
+
+
+def test_support_resistance_buy_near_resistance():
+    data = make_support_resistance_data(
+        latest_close=100.0,
+        resistance=102.0,
+        support=90.0,
+    )
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="BUY",
+    )
+
+    assert result["nearest_resistance"] == 102.0
+    assert result["distance_to_resistance_percent"] == 2.0
+    assert result["support_resistance_score"] == 40.0
+    assert result["support_resistance_label"] == "NEAR_RESISTANCE"
+
+
+def test_support_resistance_sell_with_excellent_room():
+    data = make_support_resistance_data(
+        latest_close=100.0,
+        resistance=110.0,
+        support=90.0,
+    )
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="SELL",
+    )
+
+    assert result["nearest_support"] == 90.0
+    assert result["distance_to_support_percent"] == 10.0
+    assert result["support_resistance_score"] == 100.0
+    assert result["support_resistance_label"] == "EXCELLENT_ROOM"
+
+
+def test_support_resistance_sell_near_support():
+    data = make_support_resistance_data(
+        latest_close=100.0,
+        resistance=110.0,
+        support=98.0,
+    )
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="SELL",
+    )
+
+    assert result["nearest_support"] == 98.0
+    assert result["distance_to_support_percent"] == 2.0
+    assert result["support_resistance_score"] == 40.0
+    assert result["support_resistance_label"] == "NEAR_SUPPORT"
+
+
+def test_support_resistance_hold_returns_no_trade():
+    data = make_support_resistance_data()
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="HOLD",
+    )
+
+    assert result["support_resistance_score"] == 0.0
+    assert result["support_resistance_label"] == "NO_TRADE"
+
+
+def test_support_resistance_insufficient_data():
+    data = make_support_resistance_data(
+        periods=60,
+    )
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="BUY",
+    )
+
+    assert result["nearest_support"] == 0.0
+    assert result["nearest_resistance"] == 0.0
+    assert result["support_resistance_score"] == 0.0
+    assert result["support_resistance_label"] == "INSUFFICIENT_DATA"
+
+
+# =========================================================
+# Support/Resistance scoring boundaries
+# =========================================================
+
+def test_support_resistance_buy_exact_boundaries():
+    cases = [
+        (101.0, 60.0, "BREAKOUT_ZONE"),
+        (103.0, 40.0, "NEAR_RESISTANCE"),
+        (105.0, 60.0, "LIMITED_ROOM"),
+        (108.0, 80.0, "GOOD_ROOM"),
+    ]
+
+    for resistance, expected_score, expected_label in cases:
+        data = make_support_resistance_data(
+            latest_close=100.0,
+            resistance=resistance,
+            support=90.0,
+        )
+
+        result = SupportResistanceEngine.calculate(
+            data=data,
+            signal="BUY",
+        )
+
+        assert result["nearest_resistance"] == resistance
+        assert result["support_resistance_score"] == expected_score
+        assert result["support_resistance_label"] == expected_label
+
+
+def test_support_resistance_sell_exact_boundaries():
+    cases = [
+        (99.0, 60.0, "BREAKDOWN_ZONE"),
+        (97.0, 40.0, "NEAR_SUPPORT"),
+        (95.0, 60.0, "LIMITED_ROOM"),
+        (92.0, 80.0, "GOOD_ROOM"),
+    ]
+
+    for support, expected_score, expected_label in cases:
+        data = make_support_resistance_data(
+            latest_close=100.0,
+            resistance=110.0,
+            support=support,
+        )
+
+        result = SupportResistanceEngine.calculate(
+            data=data,
+            signal="SELL",
+        )
+
+        assert result["nearest_support"] == support
+        assert result["support_resistance_score"] == expected_score
+        assert result["support_resistance_label"] == expected_label
+
+
+def test_support_resistance_buy_open_space():
+    data = make_support_resistance_data(
+        latest_close=120.0,
+        resistance=110.0,
+        support=90.0,
+    )
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="BUY",
+    )
+
+    assert result["nearest_resistance"] == 0.0
+    assert result["distance_to_resistance_percent"] == 0.0
+    assert result["support_resistance_score"] == 85.0
+    assert result["support_resistance_label"] == "OPEN_SPACE"
+
+
+def test_support_resistance_sell_open_space():
+    data = make_support_resistance_data(
+        latest_close=80.0,
+        resistance=110.0,
+        support=90.0,
+    )
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="SELL",
+    )
+
+    assert result["nearest_support"] == 0.0
+    assert result["distance_to_support_percent"] == 0.0
+    assert result["support_resistance_score"] == 85.0
+    assert result["support_resistance_label"] == "OPEN_SPACE"
+
+
+def test_support_resistance_signal_is_case_insensitive():
+    data = make_support_resistance_data(
+        latest_close=100.0,
+        resistance=110.0,
+        support=90.0,
+    )
+
+    upper = SupportResistanceEngine.calculate(
+        data=data,
+        signal="BUY",
+    )
+
+    lower = SupportResistanceEngine.calculate(
+        data=data,
+        signal="buy",
+    )
+
+    assert lower == upper
+
+
+def test_support_resistance_unsupported_signal_returns_no_trade():
+    data = make_support_resistance_data()
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="INVALID",
+    )
+
+    assert result["support_resistance_score"] == 0.0
+    assert result["support_resistance_label"] == "NO_TRADE"
+
+
+# =========================================================
+# Support/Resistance input validation
+# =========================================================
+
+def test_support_resistance_missing_close_column():
+    data = make_support_resistance_data()
+    data = data.drop(columns=["Close"])
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="BUY",
+    )
+
+    assert result["support_resistance_score"] == 0.0
+    assert result["support_resistance_label"] == "NO_CLOSE_DATA"
+
+
+def test_support_resistance_missing_high_column():
+    data = make_support_resistance_data()
+    data = data.drop(columns=["High"])
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="BUY",
+    )
+
+    assert result["support_resistance_score"] == 0.0
+    assert result["support_resistance_label"] == "NO_HIGH_DATA"
+
+
+def test_support_resistance_missing_low_column():
+    data = make_support_resistance_data()
+    data = data.drop(columns=["Low"])
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="BUY",
+    )
+
+    assert result["support_resistance_score"] == 0.0
+    assert result["support_resistance_label"] == "NO_LOW_DATA"
+
+
+def test_support_resistance_zero_latest_close():
+    data = make_support_resistance_data()
+    data.loc[data.index[-1], "Close"] = 0.0
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="BUY",
+    )
+
+    assert result["support_resistance_score"] == 0.0
+    assert result["support_resistance_label"] == "INVALID_CLOSE_PRICE"
+
+
+def test_support_resistance_negative_latest_close():
+    data = make_support_resistance_data()
+    data.loc[data.index[-1], "Close"] = -100.0
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="BUY",
+    )
+
+    assert result["support_resistance_score"] == 0.0
+    assert result["support_resistance_label"] == "INVALID_CLOSE_PRICE"
+
+
+def test_support_resistance_nan_latest_close():
+    data = make_support_resistance_data()
+    data.loc[data.index[-1], "Close"] = float("nan")
+
+    result = SupportResistanceEngine.calculate(
+        data=data,
+        signal="BUY",
+    )
+
+    assert result["support_resistance_score"] == 0.0
+    assert result["support_resistance_label"] == "INVALID_CLOSE_PRICE"
+
+
+def test_support_resistance_invalid_lookback():
+    data = make_support_resistance_data()
+
+    with pytest.raises(ValueError):
+        SupportResistanceEngine.calculate(
+            data=data,
+            signal="BUY",
+            lookback=0,
+        )
+
+
+def test_support_resistance_invalid_pivot_window():
+    data = make_support_resistance_data()
+
+    with pytest.raises(ValueError):
+        SupportResistanceEngine.calculate(
+            data=data,
+            signal="BUY",
+            pivot_window=0,
+        )
