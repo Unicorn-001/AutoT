@@ -24,11 +24,39 @@ class EmaRsiStrategy(StrategyInterface):
                 "confidence": 0.0,
             }
 
+        if ("EMA_20", "") not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing EMA_20 data.",
+                "confidence": 0.0,
+            }
+
+        if ("EMA_50", "") not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing EMA_50 data.",
+                "confidence": 0.0,
+            }
+
+        if ("RSI", "") not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing RSI data.",
+                "confidence": 0.0,
+            }
+
         latest_row = data.iloc[-1]
 
         ema_20 = latest_row[("EMA_20", "")]
         ema_50 = latest_row[("EMA_50", "")]
         rsi = latest_row[("RSI", "")]
+
+        if pd.isna(ema_20) or pd.isna(ema_50) or pd.isna(rsi):
+            return {
+                "signal": "HOLD",
+                "reason": "Invalid EMA/RSI indicator data.",
+                "confidence": 0.0,
+            }
 
         if ema_20 > ema_50 and rsi > 50:
             return {
