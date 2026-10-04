@@ -24,11 +24,42 @@ class VolumeSpikeStrategy(StrategyInterface):
                 "confidence": 0.0,
             }
 
+        required_columns = [
+            ("EMA_20", ""),
+            ("VOLUME_RATIO", ""),
+        ]
+
+        if any(column not in data.columns for column in required_columns):
+            return {
+                "signal": "HOLD",
+                "reason": "Missing volume spike data.",
+                "confidence": 0.0,
+            }
+
         latest_row = data.iloc[-1]
 
-        close = latest_row[("Close", data.columns[0][1])]
+        close_columns = [
+            column for column in data.columns
+            if column[0] == "Close"
+        ]
+
+        if not close_columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing Close data.",
+                "confidence": 0.0,
+            }
+
+        close = latest_row[close_columns[0]]
         ema_20 = latest_row[("EMA_20", "")]
         volume_ratio = latest_row[("VOLUME_RATIO", "")]
+
+        if pd.isna(close) or pd.isna(ema_20) or pd.isna(volume_ratio):
+            return {
+                "signal": "HOLD",
+                "reason": "Volume spike data is invalid.",
+                "confidence": 0.0,
+            }
 
         if volume_ratio >= 2.0 and close > ema_20:
             return {
