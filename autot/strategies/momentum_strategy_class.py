@@ -24,9 +24,23 @@ class MomentumStrategy(StrategyInterface):
                 "confidence": 0.0,
             }
 
+        if ("MOMENTUM", "") not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing MOMENTUM data.",
+                "confidence": 0.0,
+            }
+
         latest_row = data.iloc[-1]
 
         momentum = latest_row[("MOMENTUM", "")]
+
+        if pd.isna(momentum):
+            return {
+                "signal": "HOLD",
+                "reason": "MOMENTUM data is invalid.",
+                "confidence": 0.0,
+            }
 
         if momentum > 0:
             return {
