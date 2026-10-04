@@ -20,10 +20,41 @@ class StochasticStrategy(StrategyInterface):
         if data.empty:
             return {"signal": "HOLD", "reason": "No data available.", "confidence": 0.0}
 
+        required_columns = [
+            ("STOCH_K", ""),
+            ("STOCH_D", ""),
+        ]
+
+        if any(column not in data.columns for column in required_columns):
+            return {
+                "signal": "HOLD",
+                "reason": "Missing stochastic data.",
+                "confidence": 0.0,
+            }
+
+        required_columns = [
+            ("STOCH_K", ""),
+            ("STOCH_D", ""),
+        ]
+
+        if any(column not in data.columns for column in required_columns):
+            return {
+                "signal": "HOLD",
+                "reason": "Missing stochastic data.",
+                "confidence": 0.0,
+            }
+
         latest_row = data.iloc[-1]
 
         stoch_k = latest_row[("STOCH_K", "")]
         stoch_d = latest_row[("STOCH_D", "")]
+
+        if pd.isna(stoch_k) or pd.isna(stoch_d):
+            return {
+                "signal": "HOLD",
+                "reason": "Stochastic data is invalid.",
+                "confidence": 0.0,
+            }
 
         if stoch_k < 20 and stoch_k > stoch_d:
             return {
