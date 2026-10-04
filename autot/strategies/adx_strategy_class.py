@@ -29,11 +29,39 @@ class AdxStrategy(StrategyInterface):
                 "confidence": 0.0,
             }
 
+        if ("ADX", "") not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing ADX data.",
+                "confidence": 0.0,
+            }
+
+        if ("DI_PLUS", "") not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing DI_PLUS data.",
+                "confidence": 0.0,
+            }
+
+        if ("DI_MINUS", "") not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing DI_MINUS data.",
+                "confidence": 0.0,
+            }
+
         latest_row = data.iloc[-1]
 
         adx = latest_row[("ADX", "")]
         di_plus = latest_row[("DI_PLUS", "")]
         di_minus = latest_row[("DI_MINUS", "")]
+
+        if pd.isna(adx) or pd.isna(di_plus) or pd.isna(di_minus):
+            return {
+                "signal": "HOLD",
+                "reason": "Invalid ADX indicator data.",
+                "confidence": 0.0,
+            }
 
         if adx > 25 and di_plus > di_minus:
             return {
