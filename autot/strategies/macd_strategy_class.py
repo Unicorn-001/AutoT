@@ -24,10 +24,31 @@ class MacdStrategy(StrategyInterface):
                 "confidence": 0.0,
             }
 
+        if ("MACD", "") not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing MACD data.",
+                "confidence": 0.0,
+            }
+
+        if ("MACD_SIGNAL", "") not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing MACD_SIGNAL data.",
+                "confidence": 0.0,
+            }
+
         latest_row = data.iloc[-1]
 
         macd = latest_row[("MACD", "")]
         macd_signal = latest_row[("MACD_SIGNAL", "")]
+
+        if pd.isna(macd) or pd.isna(macd_signal):
+            return {
+                "signal": "HOLD",
+                "reason": "Invalid MACD indicator data.",
+                "confidence": 0.0,
+            }
 
         if macd > macd_signal:
             return {
