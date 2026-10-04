@@ -24,11 +24,44 @@ class BollingerStrategy(StrategyInterface):
                 "confidence": 0.0,
             }
 
+        if ("BB_UPPER", "") not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing BB_UPPER data.",
+                "confidence": 0.0,
+            }
+
+        if ("BB_LOWER", "") not in data.columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing BB_LOWER data.",
+                "confidence": 0.0,
+            }
+
         latest_row = data.iloc[-1]
 
-        close = latest_row[("Close", data.columns[0][1])]
+        close_columns = [
+            column for column in data.columns
+            if column[0] == "Close"
+        ]
+
+        if not close_columns:
+            return {
+                "signal": "HOLD",
+                "reason": "Missing Close data.",
+                "confidence": 0.0,
+            }
+
+        close = latest_row[close_columns[0]]
         upper_band = latest_row[("BB_UPPER", "")]
         lower_band = latest_row[("BB_LOWER", "")]
+
+        if pd.isna(close) or pd.isna(upper_band) or pd.isna(lower_band):
+            return {
+                "signal": "HOLD",
+                "reason": "Invalid Bollinger Band data.",
+                "confidence": 0.0,
+            }
 
         if close <= lower_band:
             return {
