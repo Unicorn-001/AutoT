@@ -30,7 +30,7 @@ def calculate_consensus_signal(strategy_results: list[dict]) -> dict:
         elif signal == "SELL":
             sell_votes += 1
             sell_score += confidence
-        else:
+        elif signal == "HOLD":
             hold_votes += 1
             hold_score += confidence
 
