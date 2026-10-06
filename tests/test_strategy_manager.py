@@ -9,6 +9,7 @@ Purpose:
 import pandas as pd
 
 from autot.strategies.manager.strategy_manager import StrategyManager
+from autot.strategies.manager.strategy_consensus import calculate_consensus_signal
 
 
 class FakeStrategy:
@@ -144,3 +145,89 @@ def test_manager_continues_when_one_strategy_fails():
     assert results[1]["signal"] == "BUY"
     assert results[1]["confidence"] == 0.80
     assert results[1]["strategy"] == "Working_Strategy"
+
+
+def test_manager_results_feed_consensus_correctly():
+    manager = StrategyManager()
+
+    manager.registry = FakeRegistry([
+        FakeStrategy(
+            "Buy_Strategy_1",
+            {
+                "signal": "BUY",
+                "reason": "Buy signal.",
+                "confidence": 0.80,
+            },
+        ),
+        FakeStrategy(
+            "Buy_Strategy_2",
+            {
+                "signal": "BUY",
+                "reason": "Buy signal.",
+                "confidence": 0.70,
+            },
+        ),
+        FakeStrategy(
+            "Sell_Strategy",
+            {
+                "signal": "SELL",
+                "reason": "Sell signal.",
+                "confidence": 0.60,
+            },
+        ),
+    ])
+
+    data = pd.DataFrame({"Close": [100.0]})
+
+    strategy_results = manager.run_all(data)
+    consensus = calculate_consensus_signal(strategy_results)
+
+    assert consensus["buy_votes"] == 2
+    assert consensus["sell_votes"] == 1
+    assert consensus["hold_votes"] == 0
+    assert consensus["buy_score"] == 1.5
+    assert consensus["sell_score"] == 0.6
+    assert consensus["final_signal"] == "BUY"
+
+
+def test_manager_results_feed_consensus_correctly():
+    manager = StrategyManager()
+
+    manager.registry = FakeRegistry([
+        FakeStrategy(
+            "Buy_Strategy_1",
+            {
+                "signal": "BUY",
+                "reason": "Buy signal.",
+                "confidence": 0.80,
+            },
+        ),
+        FakeStrategy(
+            "Buy_Strategy_2",
+            {
+                "signal": "BUY",
+                "reason": "Buy signal.",
+                "confidence": 0.70,
+            },
+        ),
+        FakeStrategy(
+            "Sell_Strategy",
+            {
+                "signal": "SELL",
+                "reason": "Sell signal.",
+                "confidence": 0.60,
+            },
+        ),
+    ])
+
+    data = pd.DataFrame({"Close": [100.0]})
+
+    strategy_results = manager.run_all(data)
+    consensus = calculate_consensus_signal(strategy_results)
+
+    assert consensus["buy_votes"] == 2
+    assert consensus["sell_votes"] == 1
+    assert consensus["hold_votes"] == 0
+    assert consensus["buy_score"] == 1.5
+    assert consensus["sell_score"] == 0.6
+    assert consensus["final_signal"] == "BUY"
