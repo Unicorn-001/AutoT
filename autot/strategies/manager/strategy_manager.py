@@ -27,7 +27,14 @@ class StrategyManager:
         results = []
 
         for strategy in self.registry.get_all():
-            strategy_result = strategy.generate_signal(data)
+            try:
+                strategy_result = strategy.generate_signal(data)
+            except Exception as exc:
+                strategy_result = {
+                    "signal": "HOLD",
+                    "reason": f"Strategy execution failed: {exc}",
+                    "confidence": 0.0,
+                }
 
             if isinstance(strategy_result, str):
                 strategy_result = {
