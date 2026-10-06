@@ -20,7 +20,7 @@ class StrategyWeightEngine:
         market_regime: str,
     ) -> list[dict]:
 
-        regime_weights = MARKET_REGIME_WEIGHTS.get(market_regime, [])
+        regime_weights = MARKET_REGIME_WEIGHTS.get(market_regime, {})
 
         weighted_results = []
 
