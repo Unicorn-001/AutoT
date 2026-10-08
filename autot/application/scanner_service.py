@@ -9,6 +9,76 @@ Purpose:
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
+def run_scan(
+    *,
+    universe: str,
+    period: str,
+    interval: str,
+    top_n: int,
+    tracker,
+    analyse_func,
+    universe_loader,
+    batch_data_loader,
+    benchmark_data_loader,
+    max_workers: int = 8,
+    on_success=None,
+    on_error=None,
+    on_stage=None,
+) -> dict:
+    """Load market data, analyse symbols, and rank results using supplied dependencies."""
+    if on_stage is not None:
+        on_stage("loading_universe", {})
+    symbols = universe_loader(universe)
+    if on_stage is not None:
+        on_stage("universe_loaded", {"count": len(symbols)})
+
+    tracker.start("Batch Download")
+    try:
+        if on_stage is not None:
+            on_stage("loading_market_data", {})
+        batch_data = batch_data_loader(
+            symbols=symbols,
+            period=period,
+            interval=interval,
+        )
+        benchmark_data = benchmark_data_loader("SPY", period, interval)
+    finally:
+        tracker.stop("Batch Download")
+
+    tracker.start("Analyse Stocks")
+    try:
+        if on_stage is not None:
+            on_stage("analysing", {})
+        results, trade_decisions = run_batch_analysis(
+            symbols,
+            batch_data,
+            benchmark_data,
+            tracker,
+            analyse_func,
+            max_workers=max_workers,
+            on_success=on_success,
+            on_error=on_error,
+        )
+    finally:
+        tracker.stop("Analyse Stocks")
+
+    if on_stage is not None:
+        on_stage("ranking", {})
+    ranked_results, top_results, trade_opportunities = build_scan_rankings(
+        results,
+        top_n,
+    )
+
+    return {
+        "symbols": symbols,
+        "results": results,
+        "trade_decisions": trade_decisions,
+        "ranked_results": ranked_results,
+        "top_results": top_results,
+        "trade_opportunities": trade_opportunities,
+    }
+
+
 def run_batch_analysis(
     symbols,
     batch_data,
