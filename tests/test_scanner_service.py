@@ -6,7 +6,7 @@ Purpose:
     Regression tests for reusable scanner application services.
 """
 
-from autot.application.scanner_service import build_scan_rankings
+from autot.application.scanner_service import build_scan_rankings, run_batch_analysis
 
 
 def make_result(
@@ -141,3 +141,82 @@ def test_rankings_add_ranks_to_the_callers_result_dictionaries():
     assert buy_result["trade_rank"] == 2
     assert sell_result["trade_rank"] == 1
     assert "trade_rank" not in hold_result
+
+
+def test_batch_analysis_collects_results_and_decisions():
+    symbols = ["AAA", "BBB"]
+    batch_data = {symbol: object() for symbol in symbols}
+    benchmark_data = object()
+    tracker = object()
+    expected_results = {symbol: {"symbol": symbol} for symbol in symbols}
+    expected_decisions = {symbol: object() for symbol in symbols}
+
+    def analyse(symbol, data, benchmark, performance_tracker):
+        assert data is batch_data[symbol]
+        assert benchmark is benchmark_data
+        assert performance_tracker is tracker
+        return expected_results[symbol], expected_decisions[symbol]
+
+    results, decisions = run_batch_analysis(
+        symbols, batch_data, benchmark_data, tracker, analyse, max_workers=1,
+    )
+
+    assert sorted(result["symbol"] for result in results) == symbols
+    assert decisions == expected_decisions
+    for result in results:
+        assert result is expected_results[result["symbol"]]
+
+
+def test_batch_analysis_skips_missing_symbols_and_reports_success_counts():
+    calls = []
+    successes = []
+
+    def analyse(symbol, data, benchmark, tracker):
+        calls.append(symbol)
+        return {"symbol": symbol}, symbol
+
+    results, decisions = run_batch_analysis(
+        ["AAA", "MISSING", "BBB"],
+        {"AAA": object(), "BBB": object()},
+        None,
+        None,
+        analyse,
+        max_workers=1,
+        on_success=lambda count, total, symbol: successes.append((count, total, symbol)),
+    )
+
+    assert calls == ["AAA", "BBB"]
+    assert decisions == {"AAA": "AAA", "BBB": "BBB"}
+    assert sorted(result["symbol"] for result in results) == ["AAA", "BBB"]
+    assert successes == [
+        (index, 3, result["symbol"])
+        for index, result in enumerate(results, start=1)
+    ]
+
+
+def test_batch_analysis_continues_after_failure_and_reports_callbacks():
+    failure = ValueError("Analysis failed")
+    successes = []
+    errors = []
+    decision = object()
+
+    def analyse(symbol, data, benchmark, tracker):
+        if symbol == "FAIL":
+            raise failure
+        return {"symbol": symbol}, decision
+
+    results, decisions = run_batch_analysis(
+        ["FAIL", "AAA"],
+        {"FAIL": object(), "AAA": object()},
+        None,
+        None,
+        analyse,
+        max_workers=1,
+        on_success=lambda count, total, symbol: successes.append((count, total, symbol)),
+        on_error=lambda symbol, error: errors.append((symbol, error)),
+    )
+
+    assert results == [{"symbol": "AAA"}]
+    assert decisions == {"AAA": decision}
+    assert successes == [(1, 2, "AAA")]
+    assert errors == [("FAIL", failure)]
