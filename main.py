@@ -1,11 +1,10 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
 from packaging import metadata
 import pandas as pd
 
 from autot import support_resistance, volume_strength
-from autot.application.scanner_service import build_scan_rankings
+from autot.application.scanner_service import build_scan_rankings, run_batch_analysis
 from autot.backtest.backtester import run_backtest
 from autot.settings.configuration_manager import ConfigurationManager
 from autot.market_data.market_data_manager import MarketDataManager
@@ -380,32 +379,20 @@ def main() -> None:
 
     tracker.start("Analyse Stocks")
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_symbol = {
-            executor.submit(
-                analyse_stock,
-                symbol,
-                batch_data[symbol],
-                benchmark_data,
-                tracker,
-            ): symbol
-            for symbol in symbols
-            if symbol in batch_data
-        }
-
-        for future in as_completed(future_to_symbol):
-            symbol = future_to_symbol[future]
-
-            try:
-                result, decision = future.result()
-
-                results.append(result)
-                trade_decisions[symbol] = decision
-
-                print(f"Completed {len(results)} / {len(symbols)}: {symbol}")
-
-            except Exception as error:
-                print(f"Error analysing {symbol}: {error}")
+    results, trade_decisions = run_batch_analysis(
+        symbols,
+        batch_data,
+        benchmark_data,
+        tracker,
+        analyse_stock,
+        max_workers,
+        on_success=lambda count, total, symbol: print(
+            f"Completed {count} / {total}: {symbol}"
+        ),
+        on_error=lambda symbol, error: print(
+            f"Error analysing {symbol}: {error}"
+        ),
+    )
 
     tracker.stop("Analyse Stocks")
 
