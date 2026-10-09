@@ -48,3 +48,14 @@ These diagnostics are logged; the UI shows the symbol count.
 Reusable usage with the existing scanner: inject
 `ProviderUniverseLoader(NasdaqTraderProvider())` as `universe_loader` into `run_scan()`.
 `CustomCSVProvider(path)` wraps the unchanged CSV loader; existing CLI/CSV calls still work.
+
+Yahoo downloads keep yfinance's persistent timezone, cookie and ISIN caches in
+`data_storage/yfinance_cache`, resolved from the project directory for both CLI and
+Streamlit. AutoT creates this ignored directory and initializes the databases once
+before download workers start, using yfinance's supported cache-location API.
+This avoids dependence on writable access to the user-level `py-yfinance` cache.
+SQLite WAL and Peewee's thread-local connections remain enabled. Cache setup errors
+include the absolute location and stop before downloading, rather than silently
+disabling caching or reporting the problem as missing stock prices.
+Restart an already-running Streamlit server after installing this change so its
+yfinance caches are configured before their first use.

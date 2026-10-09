@@ -2,6 +2,7 @@ import yfinance as yf
 import pandas as pd
 
 from autot.market_data.symbols import normalize_market_data_symbol
+from autot.market_data.yfinance_cache import ensure_yfinance_cache
 
 
 def _to_yahoo_symbol(symbol: str) -> str:
@@ -30,6 +31,7 @@ def download_stock_data(
     Download historical stock data for one stock.
     """
 
+    ensure_yfinance_cache()
     yahoo_symbol = _to_yahoo_symbol(symbol)
 
     data = yf.download(
@@ -65,6 +67,7 @@ def download_batch_stock_data(
     if batch_size <= 0:
         raise ValueError("Batch size must be greater than zero.")
 
+    ensure_yfinance_cache()
     stock_data = {}
     retry_symbols = []
 
