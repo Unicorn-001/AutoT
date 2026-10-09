@@ -4,7 +4,7 @@ from packaging import metadata
 import pandas as pd
 
 from autot import support_resistance, volume_strength
-from autot.application.scanner_service import build_scan_rankings, run_batch_analysis
+from autot.application.scanner_service import run_scan
 from autot.backtest.backtester import run_backtest
 from autot.settings.configuration_manager import ConfigurationManager
 from autot.market_data.market_data_manager import MarketDataManager
@@ -351,57 +351,43 @@ def main() -> None:
         "backtest_interval": config.get_string("BACKTEST_INTERVAL"),
     }
 
-    print_stage("Loading universe")
-    symbols = load_universe(
-        config.get_string("ACTIVE_UNIVERSE")
-    )
-    print(f"Loaded {len(symbols)} symbols")
+    def on_scan_stage(stage, details):
+        if stage == "loading_universe":
+            print_stage("Loading universe")
+        elif stage == "universe_loaded":
+            print(f"Loaded {details['count']} symbols")
+        elif stage in ("loading_market_data", "analysing"):
+            print_stage("Loading market data from cache/download")
+        elif stage == "ranking":
+            print_stage("Ranking results")
 
-    tracker.start("Batch Download")
-    print_stage("Loading market data from cache/download")
-    batch_data = MarketDataManager.get_batch_stock_data(
-        symbols=symbols,
+    max_workers = 8
+    top_n = config.get_int("TOP_N_STOCKS")
+    scan = run_scan(
+        universe=config.get_string("ACTIVE_UNIVERSE"),
         period=config.get_string("BACKTEST_PERIOD"),
         interval=config.get_string("BACKTEST_INTERVAL"),
-    )
-
-    benchmark_data = MarketDataManager.get_stock_data(
-        "SPY",
-        config.get_string("BACKTEST_PERIOD"),
-        config.get_string("BACKTEST_INTERVAL"),
-    )
-
-    tracker.stop("Batch Download")
-    print_stage("Loading market data from cache/download")
-    results = []
-    trade_decisions = {}
-    max_workers = 8
-
-    tracker.start("Analyse Stocks")
-
-    results, trade_decisions = run_batch_analysis(
-        symbols,
-        batch_data,
-        benchmark_data,
-        tracker,
-        analyse_stock,
-        max_workers,
+        top_n=top_n,
+        tracker=tracker,
+        analyse_func=analyse_stock,
+        universe_loader=load_universe,
+        batch_data_loader=MarketDataManager.get_batch_stock_data,
+        benchmark_data_loader=MarketDataManager.get_stock_data,
+        max_workers=max_workers,
         on_success=lambda count, total, symbol: print(
             f"Completed {count} / {total}: {symbol}"
         ),
         on_error=lambda symbol, error: print(
             f"Error analysing {symbol}: {error}"
         ),
+        on_stage=on_scan_stage,
     )
-
-    tracker.stop("Analyse Stocks")
-
-    print_stage("Ranking results")
-    top_n = config.get_int("TOP_N_STOCKS")
-    ranked_results, top_results, trade_opportunities = build_scan_rankings(
-        results,
-        top_n,
-    )
+    symbols = scan["symbols"]
+    results = scan["results"]
+    trade_decisions = scan["trade_decisions"]
+    ranked_results = scan["ranked_results"]
+    top_results = scan["top_results"]
+    trade_opportunities = scan["trade_opportunities"]
 
     print("\n========== TODAY'S SWING TRADE OPPORTUNITIES ==========")
 
