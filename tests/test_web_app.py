@@ -54,6 +54,8 @@ def test_web_scan_uses_service_and_keeps_results_between_reruns(monkeypatch):
     assert calls[0]["interval"] == "1d"
     assert calls[0]["top_n"] == 3
     assert calls[0]["analyse_func"].__name__ == "analyse_stock"
+    from autot.universe.universe_loader import load_universe
+    assert calls[0]["universe_loader"] is load_universe
     assert app.metric[0].value == "2"
     assert len(app.dataframe) == 3
     assert any("BBB: Insufficient data" in warning.value for warning in app.warning)
@@ -86,3 +88,35 @@ def test_web_rejects_blank_inputs_without_scanning(monkeypatch):
     app.button[0].click().run()
     assert not app.exception
     assert app.error[0].value == "Enter a universe CSV, backtest period and interval."
+
+
+def test_web_online_selection_injects_provider_and_runs_shared_scanner(monkeypatch):
+    from autot.market_data.market_data_manager import MarketDataManager
+    from autot.universe.nasdaq_provider import NasdaqTraderProvider
+    from autot.universe.providers import UniverseResult
+
+    calls = []
+
+    def load(provider):
+        calls.append(provider)
+        return UniverseResult(["AAA", "BRK-B"], "Nasdaq Trader", 2, 0)
+
+    def batch(*, symbols, period, interval):
+        assert symbols == ["AAA", "BRK-B"]
+        return {}  # No price downloads or trading calculations in this UI test.
+
+    monkeypatch.setattr(NasdaqTraderProvider, "load", load)
+    monkeypatch.setattr(MarketDataManager, "get_batch_stock_data", batch)
+    monkeypatch.setattr(MarketDataManager, "get_stock_data", lambda *args: None)
+    app = AppTest.from_file(APP).run()
+    app.selectbox[0].select("Online US Stocks").run()
+    assert [field.label for field in app.text_input] == ["Backtest period", "Interval"]
+    assert not calls
+    app.button[0].click().run()
+    assert not app.exception
+    assert len(calls) == 1
+    assert app.metric[0].value == "2"
+    assert "Online US Stocks" in app.caption[1].value
+    app.selectbox[0].select("Custom CSV").run()
+    assert app.text_input[0].label == "Universe CSV"
+    assert len(calls) == 1

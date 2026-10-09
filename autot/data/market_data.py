@@ -1,17 +1,14 @@
 import yfinance as yf
 import pandas as pd
 
-
-YAHOO_SYMBOL_MAP = {
-    "BF.B": "BF-B",
-}
+from autot.market_data.symbols import normalize_market_data_symbol
 
 
 def _to_yahoo_symbol(symbol: str) -> str:
     """
     Convert an AutoT market symbol to the format expected by Yahoo Finance.
     """
-    return YAHOO_SYMBOL_MAP.get(symbol, symbol)
+    return normalize_market_data_symbol(symbol)
 
 
 def _has_usable_data(data: pd.DataFrame) -> bool:

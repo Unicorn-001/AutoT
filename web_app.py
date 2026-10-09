@@ -8,6 +8,8 @@ from autot.market_data.market_data_manager import MarketDataManager
 from autot.performance.performance_tracker import PerformanceTracker
 from autot.settings.configuration_manager import ConfigurationManager
 from autot.universe.universe_loader import load_universe
+from autot.universe.nasdaq_provider import NasdaqTraderProvider
+from autot.universe.providers import ProviderUniverseLoader
 from main import analyse_stock
 
 
@@ -23,11 +25,14 @@ def main():
         st.error(f"Unable to load configuration: {error}")
         return
 
+    source = st.selectbox("Universe source", ["Online US Stocks", "Custom CSV"], index=1)
     with st.form("scan_settings"):
-        universe = st.text_input(
-            "Universe CSV", value=config.get_string("ACTIVE_UNIVERSE"),
-            help="Path to a CSV containing a symbol column, relative to the project root.",
-        )
+        universe = "Online US Stocks"
+        if source == "Custom CSV":
+            universe = st.text_input(
+                "Universe CSV", value=config.get_string("ACTIVE_UNIVERSE"),
+                help="Path to a CSV containing a symbol column, relative to the project root.",
+            )
         period = st.text_input("Backtest period", value=config.get_string("BACKTEST_PERIOD"))
         interval = st.text_input("Interval", value=config.get_string("BACKTEST_INTERVAL"))
         top_n = st.number_input("Number of top stocks", min_value=1, value=default_top_n, step=1)
@@ -68,11 +73,16 @@ def main():
             errors.append(f"{symbol}: {error}")
 
         try:
+            universe_loader = load_universe
+            if source == "Online US Stocks":
+                universe_loader = ProviderUniverseLoader(NasdaqTraderProvider(
+                    cache_dir=config.get_string("UNIVERSE_CACHE_DIR") or None,
+                ))
             scan = run_scan(
                 **settings,
                 tracker=PerformanceTracker(),
                 analyse_func=analyse_stock,
-                universe_loader=load_universe,
+                universe_loader=universe_loader,
                 batch_data_loader=MarketDataManager.get_batch_stock_data,
                 benchmark_data_loader=MarketDataManager.get_stock_data,
                 on_success=on_success,
@@ -80,7 +90,7 @@ def main():
                 on_stage=on_stage,
             )
         except Exception as error:
-            status.error(f"Scan failed: {error}. Check the universe CSV and market-data settings.")
+            status.error(f"Scan failed: {error}. Check the universe source and market-data settings.")
             progress.empty()
             for message in errors:
                 st.warning(f"Analysis failed for {message}")
