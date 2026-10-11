@@ -122,7 +122,7 @@ def test_cache_setup_error_is_clear_and_prevents_download(tmp_path, monkeypatch)
     path.write_text("blocked")
     monkeypatch.setattr(yfinance_cache, "CACHE_DIR", path)
     monkeypatch.setattr(yfinance_cache, "_configured", False)
-    monkeypatch.setattr(market_data.yf, "download", lambda **kwargs: pytest.fail("No download should start"))
+    monkeypatch.setattr(yfinance_cache.yf, "download", lambda **kwargs: pytest.fail("No download should start"))
     with pytest.raises(RuntimeError, match=f"Unable to initialize yfinance cache at {path}"):
         market_data.download_batch_stock_data(["UDR", "FOXA"], "1y", "1d")
 
@@ -133,3 +133,42 @@ def test_unwritable_cache_is_reported_without_silent_disable(tmp_path, monkeypat
     monkeypatch.setattr(yfinance_cache.os, "access", lambda *args: False)
     with pytest.raises(RuntimeError, match="not readable/writable/searchable"):
         yfinance_cache.ensure_yfinance_cache()
+
+
+@pytest.mark.parametrize("library", [yfinance_cache.yf, yfinance_cache.peewee])
+def test_unknown_dependency_version_stops_before_cache_or_download(monkeypatch, library):
+    monkeypatch.setattr(library, "__version__", "999.0")
+    monkeypatch.setattr(yfinance_cache, "ensure_yfinance_cache", lambda: pytest.fail("No setup"))
+    with pytest.raises(yfinance_cache.CacheLifecycleError, match="Unsupported.*versions"):
+        yfinance_cache.worker_cache_databases()
+
+
+def test_changed_cache_layout_fails_safely(monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(yfinance_cache, "ensure_yfinance_cache", lambda: None)
+    monkeypatch.setattr(yfinance_cache.cache, "get_tz_cache", lambda: SimpleNamespace())
+    with pytest.raises(yfinance_cache.CacheLifecycleError, match="Unsupported yfinance cache layout"):
+        yfinance_cache.worker_cache_databases()
+
+
+def test_cleanup_attempts_all_connections_and_reports_failure():
+    calls = []
+
+    class DB:
+        def __init__(self, name):
+            self.database = name
+
+        def is_closed(self):
+            return False
+
+        def close(self):
+            calls.append(self.database)
+            if self.database == "tkr-tz.db":
+                raise RuntimeError("close failed")
+
+    with pytest.raises(yfinance_cache.CacheLifecycleError, match="tkr-tz.db: close failed"):
+        yfinance_cache.close_worker_cache_connections(tuple(DB(name) for name in (
+            "tkr-tz.db", "cookies.db", "isin-tkr.db",
+        )))
+    assert calls == ["tkr-tz.db", "cookies.db", "isin-tkr.db"]

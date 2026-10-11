@@ -1,173 +1,106 @@
-import yfinance as yf
+import logging
+import math
+
 import pandas as pd
 
 from autot.market_data.symbols import normalize_market_data_symbol
-from autot.market_data.yfinance_cache import ensure_yfinance_cache
+from autot.market_data.yfinance_download import (
+    MarketDataInfrastructureError, YahooDownloadPool, is_infrastructure_failure,
+)
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _to_yahoo_symbol(symbol: str) -> str:
-    """
-    Convert an AutoT market symbol to the format expected by Yahoo Finance.
-    """
     return normalize_market_data_symbol(symbol)
 
 
 def _has_usable_data(data: pd.DataFrame) -> bool:
-    """
-    Check whether downloaded market data contains enough rows
-    to be useful for AutoT analysis.
-
-    V1 requires at least 50 daily observations.
-    """
     return data is not None and not data.empty and len(data) >= 50
 
 
-def download_stock_data(
-    symbol: str,
-    period: str = "1y",
-    interval: str = "1d",
-) -> pd.DataFrame:
-    """
-    Download historical stock data for one stock.
-    """
-
-    ensure_yfinance_cache()
-    yahoo_symbol = _to_yahoo_symbol(symbol)
-
-    data = yf.download(
-        tickers=yahoo_symbol,
-        period=period,
-        interval=interval,
-        auto_adjust=True,
-        progress=False,
-        threads=False,
-    )
-
-    if not _has_usable_data(data):
-        raise ValueError(
-            f"Insufficient market data found for symbol: {symbol}"
-        )
-
+def _clean_data(data):
+    if data is None:
+        return None
+    data = data.dropna().copy()
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = data.columns.get_level_values(0)
     return data
 
 
+def _check_infrastructure(results, stock_data):
+    for symbol, result in results.items():
+        if result.error is not None and is_infrastructure_failure(result.error):
+            raise MarketDataInfrastructureError(
+                f"Market-data infrastructure failure at {symbol}; downloads stopped "
+                f"without individual retry fan-out: {result.error}",
+                partial_data=stock_data.copy(),
+            ) from result.error
+
+
+def download_stock_data(symbol: str, period: str = "1y", interval: str = "1d") -> pd.DataFrame:
+    yahoo_symbol = _to_yahoo_symbol(symbol)
+    with YahooDownloadPool() as pool:
+        results = pool.download([yahoo_symbol], period, interval)
+        _check_infrastructure(results, {})
+        result = results[yahoo_symbol]
+        if result.error is not None:
+            raise result.error
+        data = result.data
+        if not _has_usable_data(_clean_data(data)):
+            raise ValueError(f"Insufficient market data found for symbol: {symbol}")
+        return data
+
+
 def download_batch_stock_data(
-    symbols: list[str],
-    period: str = "1y",
-    interval: str = "1d",
-    batch_size: int = 50,
+    symbols: list[str], period: str = "1y", interval: str = "1d", batch_size: int = 50,
 ) -> dict[str, pd.DataFrame]:
-    """
-    Download historical market data for multiple stocks.
-
-    Stocks are downloaded in controlled batches. Missing or
-    insufficient datasets are retried individually.
-    """
-
+    """Download with owned worker cleanup and bounded infrastructure-aware retries."""
     if batch_size <= 0:
         raise ValueError("Batch size must be greater than zero.")
-
-    ensure_yfinance_cache()
+    yahoo_to_autot = {_to_yahoo_symbol(symbol): symbol for symbol in symbols}
+    yahoo_symbols = list(yahoo_to_autot)
     stock_data = {}
     retry_symbols = []
 
-    yahoo_to_autot = {
-        _to_yahoo_symbol(symbol): symbol
-        for symbol in symbols
-    }
-
-    yahoo_symbols = list(yahoo_to_autot.keys())
-
-    for start in range(0, len(yahoo_symbols), batch_size):
-        batch = yahoo_symbols[
-            start:start + batch_size
-        ]
-
-        try:
-            data = yf.download(
-                tickers=batch,
-                period=period,
-                interval=interval,
-                auto_adjust=True,
-                progress=False,
-                group_by="ticker",
-                threads=True,
-            )
-
-        except Exception as error:
-            print(
-                "Batch market-data download failed. "
-                f"Retrying individually: {error}"
-            )
-
-            retry_symbols.extend(
-                yahoo_to_autot[symbol]
-                for symbol in batch
-            )
-            continue
-
-        for yahoo_symbol in batch:
-            autot_symbol = yahoo_to_autot[yahoo_symbol]
-
-            try:
-                symbol_data = data[yahoo_symbol].dropna()
-
-            except (KeyError, TypeError):
-                retry_symbols.append(autot_symbol)
-                continue
-
-            if not _has_usable_data(symbol_data):
-                retry_symbols.append(autot_symbol)
-                continue
-
-            symbol_data.columns = pd.MultiIndex.from_product(
-                [symbol_data.columns, [autot_symbol]]
-            )
-
-            stock_data[autot_symbol] = symbol_data
-
-    # Retry failed or insufficient batch downloads individually.
-    for symbol in dict.fromkeys(retry_symbols):
-        yahoo_symbol = _to_yahoo_symbol(symbol)
-
-        try:
-            data = yf.download(
-                tickers=yahoo_symbol,
-                period=period,
-                interval=interval,
-                auto_adjust=True,
-                progress=False,
-                threads=False,
-            )
-
-        except Exception as error:
-            print(
-                f"Unable to download {symbol}: {error}"
-            )
-            continue
-
+    def accept(symbol, result):
+        if result.error is not None:
+            return False
+        data = _clean_data(result.data)
         if not _has_usable_data(data):
-            print(
-                f"Insufficient market data for {symbol}. "
-                "Symbol skipped."
-            )
-            continue
+            return False
+        autot_symbol = yahoo_to_autot[symbol]
+        data.columns = pd.MultiIndex.from_product([data.columns, [autot_symbol]])
+        stock_data[autot_symbol] = data
+        return True
 
-        # Single-symbol yfinance downloads normally contain
-        # MultiIndex columns. Convert them to the same format
-        # expected by the rest of AutoT.
-        if isinstance(data.columns, pd.MultiIndex):
-            data.columns = data.columns.get_level_values(0)
+    with YahooDownloadPool() as pool:
+        for start in range(0, len(yahoo_symbols), batch_size):
+            batch = yahoo_symbols[start:start + batch_size]
+            results = pool.download(batch, period, interval)
+            missing = [symbol for symbol in batch if not accept(symbol, results[symbol])]
+            _check_infrastructure(results, stock_data)
+            # Broad missing data may mask transport failure. Do not infer that
+            # stocks are delisted, or multiply ambiguous failures into singles.
+            if len(missing) >= max(4, math.ceil(len(batch) / 2)):
+                raise MarketDataInfrastructureError(
+                    f"Yahoo batch unavailable: {len(missing)}/{len(batch)} datasets "
+                    "missing or insufficient; cause unverified. Downloads stopped "
+                    "without individual retry fan-out.",
+                    partial_data=stock_data.copy(),
+                )
+            retry_symbols.extend(missing)
 
-        data = data.dropna()
-
-        data.columns = pd.MultiIndex.from_product(
-            [data.columns, [symbol]]
-        )
-
-        stock_data[symbol] = data
+        for symbol in dict.fromkeys(retry_symbols):
+            results = pool.download([symbol], period, interval)
+            _check_infrastructure(results, stock_data)
+            if not accept(symbol, results[symbol]):
+                LOGGER.warning(
+                    "Insufficient/unverified market data for %s after one retry: %s",
+                    yahoo_to_autot[symbol], results[symbol].error or "fewer than 50 usable rows",
+                )
 
     if not stock_data:
         raise ValueError("No batch data downloaded.")
-
     return stock_data

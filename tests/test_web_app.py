@@ -54,6 +54,11 @@ def test_web_scan_uses_service_and_keeps_results_between_reruns(monkeypatch):
     assert calls[0]["interval"] == "1d"
     assert calls[0]["top_n"] == 3
     assert calls[0]["analyse_func"].__name__ == "analyse_stock"
+    import main as cli
+    from autot.market_data.market_data_manager import MarketDataManager
+    assert cli.MarketDataManager is MarketDataManager
+    assert calls[0]["batch_data_loader"] is cli.MarketDataManager.get_batch_stock_data
+    assert calls[0]["benchmark_data_loader"] is cli.MarketDataManager.get_stock_data
     from autot.universe.universe_loader import load_universe
     assert calls[0]["universe_loader"] is load_universe
     assert app.metric[0].value == "2"
@@ -107,7 +112,7 @@ def test_web_online_selection_injects_provider_and_runs_shared_scanner(monkeypat
 
     monkeypatch.setattr(NasdaqTraderProvider, "load", load)
     monkeypatch.setattr(MarketDataManager, "get_batch_stock_data", batch)
-    monkeypatch.setattr(MarketDataManager, "get_stock_data", lambda *args: None)
+    monkeypatch.setattr(MarketDataManager, "get_stock_data", lambda *args: object())
     app = AppTest.from_file(APP).run()
     app.selectbox[0].select("Online US Stocks").run()
     assert [field.label for field in app.text_input] == ["Backtest period", "Interval"]

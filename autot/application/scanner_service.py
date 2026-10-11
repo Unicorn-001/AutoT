@@ -36,12 +36,22 @@ def run_scan(
     try:
         if on_stage is not None:
             on_stage("loading_market_data", {})
+        try:
+            benchmark_data = benchmark_data_loader("SPY", period, interval)
+            if benchmark_data is None or (
+                hasattr(benchmark_data, "empty")
+                and (benchmark_data.empty or len(benchmark_data.dropna()) < 50)
+            ):
+                raise ValueError("Insufficient usable market data for SPY benchmark")
+        except Exception as error:
+            raise ValueError(
+                f"SPY benchmark preflight failed; universe download not started: {error}"
+            ) from error
         batch_data = batch_data_loader(
             symbols=symbols,
             period=period,
             interval=interval,
         )
-        benchmark_data = benchmark_data_loader("SPY", period, interval)
     finally:
         tracker.stop("Batch Download")
 

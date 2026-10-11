@@ -59,3 +59,29 @@ include the absolute location and stop before downloading, rather than silently
 disabling caching or reporting the problem as missing stock prices.
 Restart an already-running Streamlit server after installing this change so its
 yfinance caches are configured before their first use.
+
+Both CLI and Streamlit use `YAHOO_DOWNLOAD_WORKERS = 4` in
+`autot/market_data/yfinance_download.py`. AutoT owns a bounded executor and
+reuses its workers and one curl_cffi session across batches. Each worker downloads
+one ticker through public `yf.download(threads=False)`, then closes its own
+Peewee cache connections in `finally`. Worker curl handles are explicitly closed
+before executor shutdown. Top-level AutoT download operations are serialized so
+concurrent scans cannot exceed four active downloads or replace each other's
+singleton Yahoo session. The later analysis executor is independent.
+
+yfinance has no documented public cache-close API. The adapter in
+`autot/market_data/yfinance_cache.py` confines cache-layout access to one module,
+checks the pinned yfinance 1.4.1/Peewee 4.0.8 versions and expected databases,
+and refuses downloads if those checks fail. Dependency upgrades require adapter
+validation. It closes connections with Peewee's public `close()` API; it does
+not monkeypatch yfinance, reset caches, or disable caching/SSL verification.
+
+SPY is downloaded and validated before universe prices. Recognized DNS, SQLite,
+TLS, timeout and rate-limit failures stop downloads without individual retry
+fan-out. A batch with at least four insufficient datasets and at least half
+its symbols unavailable also stops with the cause marked unverified. Isolated
+insufficient data gets one retry; it is never classified as delisted by AutoT.
+Infrastructure exceptions retain usable datasets in `partial_data` for explicit
+recovery; the scanner reports failure rather than silently ranking partial data.
+These lifecycle changes address demonstrated resource retention; the earlier
+fatal Streamlit failure has not yet been conclusively reproduced.

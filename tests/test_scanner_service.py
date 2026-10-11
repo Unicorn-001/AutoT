@@ -301,8 +301,8 @@ def test_run_scan_orchestrates_loaders_analysis_and_rankings(with_callbacks):
 
     assert loader_calls == [
         ("universe", "test_universe.csv"),
-        ("batch", symbols, "1y", "1d"),
         ("benchmark", "SPY", "1y", "1d"),
+        ("batch", symbols, "1y", "1d"),
     ]
     assert set(scan) == {
         "symbols", "results", "trade_decisions", "ranked_results",
@@ -373,13 +373,54 @@ def test_run_scan_propagates_loader_exceptions(failing_loader):
             max_workers=1,
         )
 
-    assert caught.value is failure
+    if failing_loader == "benchmark":
+        assert "SPY benchmark preflight failed" in str(caught.value)
+        assert caught.value.__cause__ is failure
+    else:
+        assert caught.value is failure
     assert tracker_calls == (
         [] if failing_loader == "universe" else [
             ("start", "Batch Download"),
             ("stop", "Batch Download"),
         ]
     )
+
+
+@pytest.mark.parametrize("benchmark", [None, "empty", "short", "exception"])
+def test_spy_preflight_failure_prevents_universe_market_download(benchmark):
+    import pandas as pd
+
+    calls = []
+
+    class Tracker:
+        def start(self, name):
+            calls.append(("start", name))
+
+        def stop(self, name):
+            calls.append(("stop", name))
+
+    def load_benchmark(*args):
+        calls.append(("benchmark", *args))
+        if benchmark == "exception":
+            raise RuntimeError("Could not resolve host: Yahoo")
+        if benchmark == "empty":
+            return pd.DataFrame()
+        if benchmark == "short":
+            return pd.DataFrame({"Close": range(49)})
+        return None
+
+    with pytest.raises(ValueError, match="SPY benchmark preflight failed; universe download not started"):
+        run_scan(
+            universe="test.csv", period="5y", interval="1d", top_n=10,
+            tracker=Tracker(), universe_loader=lambda universe: ["AAA"],
+            benchmark_data_loader=load_benchmark,
+            batch_data_loader=lambda **kwargs: pytest.fail("Universe prices must not start"),
+            analyse_func=lambda *args: pytest.fail("Analysis must not start"),
+        )
+    assert calls == [
+        ("start", "Batch Download"), ("benchmark", "SPY", "5y", "1d"),
+        ("stop", "Batch Download"),
+    ]
 
 
 def test_run_scan_stops_analysis_timer_when_batch_analysis_raises():
