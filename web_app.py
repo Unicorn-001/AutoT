@@ -1,9 +1,9 @@
 """Local Streamlit entry point for the AutoT scanner."""
 
-import pandas as pd
 import streamlit as st
 
 from autot.application.scanner_service import run_scan
+from autot.application.scan_display import render_scan_results
 from autot.market_data.market_data_manager import MarketDataManager
 from autot.performance.performance_tracker import PerformanceTracker
 from autot.settings.configuration_manager import ConfigurationManager
@@ -52,6 +52,7 @@ def main():
         loaded = st.empty()
         progress = st.progress(0.0)
         errors = []
+        diagnostics = {}
 
         def on_stage(stage, details):
             messages = {
@@ -88,6 +89,7 @@ def main():
                 on_success=on_success,
                 on_error=on_error,
                 on_stage=on_stage,
+                diagnostics=diagnostics,
             )
         except Exception as error:
             status.error(f"Scan failed: {error}. Check the universe source and market-data settings.")
@@ -99,37 +101,12 @@ def main():
         progress.progress(1.0)
         status.success("Scan complete")
         loaded.empty()
-        st.session_state["scan"] = {"outputs": scan, "settings": settings, "errors": errors}
+        st.session_state["scan"] = {"outputs": scan, "settings": settings, "errors": errors, "diagnostics": diagnostics}
 
     saved = st.session_state.get("scan")
     if saved is None:
         return
-    scan = saved["outputs"]
-    settings = saved["settings"]
-    st.caption(
-        f"Results for {settings['universe']} · {settings['period']} · {settings['interval']}"
-    )
-    st.metric("Symbols loaded", len(scan["symbols"]))
-    st.caption(f"Successfully analysed {len(scan['results'])} / {len(scan['symbols'])} symbols")
-    for message in saved["errors"]:
-        st.warning(f"Analysis failed for {message}")
-    if len(scan["results"]) < len(scan["symbols"]):
-        st.warning("Some symbols were skipped or failed analysis; results are partial.")
-
-    st.subheader("Ranked Results")
-    if scan["ranked_results"]:
-        st.dataframe(pd.DataFrame(scan["ranked_results"]), hide_index=True)
-        st.subheader(f"Top {settings['top_n']} Stocks")
-        st.dataframe(pd.DataFrame(scan["top_results"]), hide_index=True)
-    else:
-        st.info("No stocks were successfully analysed.")
-
-    st.divider()
-    st.subheader("Trade Opportunities")
-    if scan["trade_opportunities"]:
-        st.dataframe(pd.DataFrame(scan["trade_opportunities"]), hide_index=True)
-    else:
-        st.info("No actionable BUY or SELL opportunities in this scan.")
+    render_scan_results(saved)
 
 
 if __name__ == "__main__":

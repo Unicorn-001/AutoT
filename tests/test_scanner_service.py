@@ -285,7 +285,9 @@ def test_run_scan_orchestrates_loaders_analysis_and_rankings(with_callbacks):
             "on_error": lambda symbol, error: errors.append((symbol, error)),
         }
 
+    diagnostics = {"stale": True}
     scan = run_scan(
+        diagnostics=diagnostics,
         universe="test_universe.csv",
         period="1y",
         interval="1d",
@@ -299,6 +301,13 @@ def test_run_scan_orchestrates_loaders_analysis_and_rankings(with_callbacks):
         **callbacks,
     )
 
+    assert diagnostics == {
+        "usable_market_data_count": 3,
+        "failures": [
+            {"symbol": "MISSING", "reason": "No usable market data returned; cause unverified"},
+            {"symbol": "FAIL", "reason": "Analysis failed: Analysis failed"},
+        ],
+    }
     assert loader_calls == [
         ("universe", "test_universe.csv"),
         ("benchmark", "SPY", "1y", "1d"),

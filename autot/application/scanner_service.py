@@ -24,8 +24,16 @@ def run_scan(
     on_success=None,
     on_error=None,
     on_stage=None,
+    diagnostics=None,
 ) -> dict:
-    """Load market data, analyse symbols, and rank results using supplied dependencies."""
+    """Load, analyse and rank symbols using supplied dependencies.
+
+    Optional diagnostics collects usable-data counts and failure reasons without
+    changing return keys or existing callbacks. Missing loader entries have an
+    unverified cause; the batch loader does not expose individual rejections.
+    """
+    if diagnostics is not None:
+        diagnostics.clear()
     if on_stage is not None:
         on_stage("loading_universe", {})
     symbols = universe_loader(universe)
@@ -56,6 +64,23 @@ def run_scan(
         tracker.stop("Batch Download")
 
     tracker.start("Analyse Stocks")
+    analysis_error = on_error
+    if diagnostics is not None:
+        diagnostics.update(
+            usable_market_data_count=sum(symbol in batch_data for symbol in symbols),
+            failures=[
+                {"symbol": symbol, "reason": "No usable market data returned; cause unverified"}
+                for symbol in symbols if symbol not in batch_data
+            ],
+        )
+
+        def analysis_error(symbol, error):
+            diagnostics["failures"].append({
+                "symbol": symbol, "reason": f"Analysis failed: {error}",
+            })
+            if on_error is not None:
+                on_error(symbol, error)
+
     try:
         if on_stage is not None:
             on_stage("analysing", {})
@@ -67,7 +92,7 @@ def run_scan(
             analyse_func,
             max_workers=max_workers,
             on_success=on_success,
-            on_error=on_error,
+            on_error=analysis_error,
         )
     finally:
         tracker.stop("Analyse Stocks")
