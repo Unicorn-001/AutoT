@@ -7,6 +7,9 @@ Purpose:
 """
 
 import pandas as pd
+from pathlib import Path
+
+from autot.runtime import project_path
 
 
 def load_universe(file_path: str = "autot/universe/my_stocks.csv") -> list[str]:
@@ -23,7 +26,12 @@ def load_universe(file_path: str = "autot/universe/my_stocks.csv") -> list[str]:
         List of stock symbols.
     """
 
-    df = pd.read_csv(file_path)
+    # App-bundled paths are stable across cwd changes. User-supplied CLI paths
+    # retain their existing absolute/relative filesystem semantics.
+    path = Path(file_path).expanduser()
+    if not path.is_absolute() and path.parts[:2] == ("autot", "universe"):
+        path = project_path(path)
+    df = pd.read_csv(path)
 
     if "symbol" not in df.columns:
         raise ValueError("CSV file must contain a 'symbol' column.")

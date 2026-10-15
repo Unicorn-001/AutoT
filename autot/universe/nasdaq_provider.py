@@ -19,6 +19,7 @@ import requests
 from autot.market_data.symbols import normalize_market_data_symbol
 from autot.universe.providers import UniverseResult
 from autot.universe.security_types import non_common_equity_reason
+from autot.runtime import PROJECT_ROOT, configure_certificates, data_dir
 
 LOGGER = logging.getLogger(__name__)
 SOURCE = "Nasdaq Trader Symbol Directory"
@@ -26,8 +27,7 @@ URLS = {
     "nasdaqlisted": "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt",
     "otherlisted": "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
 }
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_CACHE_DIR = PROJECT_ROOT / "data_storage" / "universe_cache"
+DEFAULT_CACHE_DIR = data_dir() / "universe_cache"
 # ACT symbols may include preferred-share $, dot suffixes, or hyphens.
 SYMBOL_PATTERN = re.compile(r"[A-Z][A-Z0-9]*(?:[.$-][A-Z0-9]+)*")
 NON_NORMAL = {"D", "E", "Q", "G", "H", "J", "K"}
@@ -125,6 +125,7 @@ class NasdaqTraderProvider:
                 temporary.unlink(missing_ok=True)
 
     def _download(self):
+        configure_certificates()
         records = []
         downloaded = filtered = duplicates = 0
         seen = set()

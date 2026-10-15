@@ -462,3 +462,37 @@ def test_run_scan_stops_analysis_timer_when_batch_analysis_raises():
         ("start", "Analyse Stocks"),
         ("stop", "Analyse Stocks"),
     ]
+
+
+@pytest.mark.parametrize("benchmark_symbol", [None, "SPY", "^NDX", "^DJI", "^FTSE", "^FTMC", "^NSEI"])
+def test_benchmark_selection_preserves_scanner_outputs_and_default_us(benchmark_symbol):
+    from unittest.mock import Mock
+    benchmark = object()
+    loader = Mock(return_value=benchmark)
+    row = make_result("AAA", "BUY", 75, 80, 90)
+    def analyse(symbol, data, received_benchmark, tracker):
+        assert received_benchmark is benchmark
+        return row, "decision"
+    kwargs = {} if benchmark_symbol is None else {"benchmark_symbol": benchmark_symbol}
+    output = run_scan(
+        universe="example", period="1y", interval="1d", top_n=10,
+        tracker=Mock(), analyse_func=analyse, universe_loader=lambda _: ["AAA"],
+        batch_data_loader=lambda **kw: {"AAA": object()}, benchmark_data_loader=loader,
+        **kwargs,
+    )
+    loader.assert_called_once_with(benchmark_symbol or "SPY", "1y", "1d")
+    assert output["trade_opportunities"] == [dict(row, rank=1, trade_rank=1)]
+    assert output["trade_decisions"] == {"AAA": "decision"}
+
+
+@pytest.mark.parametrize("symbol", ["^NDX", "^DJI", "^FTSE", "^FTMC", "^NSEI"])
+def test_international_benchmark_preflight_still_blocks_batch(symbol):
+    from unittest.mock import Mock
+    batch = Mock()
+    with pytest.raises(ValueError, match="benchmark preflight failed") as error:
+        run_scan(universe="test", period="1y", interval="1d", top_n=10,
+                 tracker=Mock(), analyse_func=Mock(), universe_loader=lambda _: ["AAA"],
+                 batch_data_loader=batch, benchmark_data_loader=lambda *a: None,
+                 benchmark_symbol=symbol)
+    assert symbol in str(error.value)
+    batch.assert_not_called()

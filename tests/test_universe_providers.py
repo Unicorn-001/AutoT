@@ -11,7 +11,7 @@ from autot.universe.nasdaq_provider import (
     DEFAULT_CACHE_DIR, PROJECT_ROOT, NasdaqTraderProvider, UniverseLoadError,
     parse_directory,
 )
-from autot.universe.providers import CustomCSVProvider, ProviderUniverseLoader
+from autot.universe.providers import CustomCSVProvider, ProviderUniverseLoader, UploadedCSVProvider
 from autot.universe.universe_loader import load_universe
 
 
@@ -217,6 +217,62 @@ def test_csv_missing_symbol_column_still_raises(tmp_path):
         CustomCSVProvider(str(path)).load()
 
 
+def test_builtin_csv_ignores_cwd_and_custom_relative_csv_still_works(tmp_path, monkeypatch):
+    expected = load_universe("autot/universe/us_stocks.csv")
+    monkeypatch.chdir(tmp_path)
+    assert load_universe("autot/universe/us_stocks.csv") == expected
+    assert expected
+    (tmp_path / "custom.csv").write_text("symbol\nXYZ\n")
+    assert CustomCSVProvider("custom.csv").load().symbols == ["XYZ"]
+
+
+def test_online_download_and_stale_cache_from_another_cwd(tmp_path, monkeypatch, http):
+    monkeypatch.chdir(tmp_path)
+    provider = NasdaqTraderProvider(tmp_path / "external", clock=lambda: 100)
+    expected = provider.load().symbols
+    monkeypatch.chdir(PROJECT_ROOT)
+    http.side_effect = requests.ConnectionError("offline")
+    stale = NasdaqTraderProvider(tmp_path / "external", clock=lambda: 86500).load()
+    assert stale.symbols == expected
+    assert stale.stale
+
+
+def test_uploaded_csv_stays_in_memory_and_preserves_order_duplicates(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    loader = ProviderUniverseLoader(UploadedCSVProvider(b"\xef\xbb\xbfsymbol,notes\n msft ,one\nBRK.B,two\nmsft,three\n"))
+    assert loader("Uploaded CSV") == ["MSFT", "BRK.B", "MSFT"]
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("content", [
+    b"", b"ticker\nAAPL\n", b"symbol\n", b"symbol\n../private\n",
+    b'symbol\n" "\n', b'symbol\n"unclosed', b"symbol\n\xff\n",
+    b"x" * (UploadedCSVProvider.MAX_BYTES + 1),
+    b"symbol\n" + b"AAPL\n" * (UploadedCSVProvider.MAX_SYMBOLS + 1),
+])
+def test_uploaded_csv_rejects_invalid_or_excessive_input(content):
+    with pytest.raises(ValueError):
+        UploadedCSVProvider(content).load()
+
+
+@pytest.mark.parametrize("symbol", [
+    "M&M.NS", "AAPL", "BRK-B", "AZN.L", "BT-A.L", "RELIANCE.NS", "360ONE.NS",
+])
+def test_uploaded_csv_accepts_yahoo_symbols(symbol):
+    result = UploadedCSVProvider(f"symbol\n{symbol}\n".encode()).load()
+    assert result.symbols == [symbol]
+
+
+@pytest.mark.parametrize("symbol", [
+    "", "   ", "BAD SYMBOL", "../private", "/etc/passwd", r"C:\private\stocks.csv",
+    "https://example.com/M&M.NS", "M&M.NS/../../private", "&", "<script>",
+    "A" * 33,
+])
+def test_uploaded_csv_rejects_malformed_symbols(symbol):
+    with pytest.raises(ValueError):
+        UploadedCSVProvider(f'symbol\n"{symbol}"\n'.encode()).load()
+
+
 @pytest.mark.parametrize("directory,symbol,name,cqs", [
     ("otherlisted", "AAC.W", "Ares Acquisition Corporation III Redeemable warrants, each whole warrant exercisable for one Class A ordinary share", "AAC.WS"),
     ("otherlisted", "AAC.U", "Ares Acquisition Corporation III Units, each consisting of one Class A ordinary share and one warrant", "AAC.U"),
@@ -297,3 +353,236 @@ def test_previous_broad_universe_cache_is_invalidated(tmp_path, http):
     http.side_effect = requests.ConnectionError("offline")
     with pytest.raises(UniverseLoadError):
         provider.load()
+
+
+# Index fixtures contain synthetic members; no test relies on live membership.
+from autot.market_data.symbols import normalize_index_symbol
+from autot.universe.index_definitions import INDICES, COUNTRIES, indices_for_country
+from autot.universe.index_provider import IndexUniverseProvider
+from autot.universe.index_sources import sources_for
+
+
+@pytest.mark.parametrize("exchange,raw,expected", [
+    ("US", "AAPL", "AAPL"), ("US", "BRK.B", "BRK-B"), ("US", "BF.A", "BF-A"),
+    ("US", "BRK-B", "BRK-B"), ("LSE", "AZN", "AZN.L"), ("LSE", "SHEL", "SHEL.L"),
+    ("LSE", "NG.", "NG.L"), ("LSE", "BP.", "BP.L"), ("LSE", "RR.", "RR.L"),
+    ("LSE", "BT.A", "BT-A.L"), ("LSE", "BT-A.L", "BT-A.L"), ("LSE", "3IN", "3IN.L"),
+    ("NSE", "RELIANCE", "RELIANCE.NS"), ("NSE", "TCS", "TCS.NS"), ("NSE", "INFY", "INFY.NS"),
+    ("NSE", "M&M", "M&M.NS"), ("NSE", "BAJAJ-AUTO", "BAJAJ-AUTO.NS"),
+    ("NSE", " tcs.ns ", "TCS.NS"), ("BSE", "500325", "500325.BO"),
+])
+def test_market_aware_index_normalization(exchange, raw, expected):
+    assert normalize_index_symbol(raw, exchange) == expected
+    assert normalize_index_symbol(expected, exchange) == expected
+    # The existing downstream Yahoo loader must leave normalized symbols alone.
+    assert normalize_market_data_symbol(expected) == expected
+
+
+@pytest.mark.parametrize("exchange,raw", [("US", "AAPL.NS"), ("LSE", "BAD SYMBOL"),
+    ("NSE", "TCS.L"), ("NSE", "../etc"), ("LSE", ""), ("US", None), ("UNKNOWN", "ABC")])
+def test_index_normalization_rejects_bad_or_wrong_exchange_symbols(exchange, raw):
+    with pytest.raises(ValueError):
+        normalize_index_symbol(raw, exchange)
+
+
+def index_response(definition, source, *, extras=False, count=None):
+    count = definition.expected_size if count is None else count
+    special = {"US": "BRK.B", "LSE": "BT.A", "NSE": "M&M"}[definition.exchange]
+    rows = [(special, "Example Class A"), *[(f"S{i:04d}", f"Company {i}") for i in range(1, count)]]
+    if extras:
+        rows += [(special, "Duplicate"), ("BAD SYMBOL", "Invalid"), ("", "Empty"), ("VALID", "")]
+    response = Mock()
+    if source.format == "nasdaq":
+        response.json.return_value = {"data": {"data": {"rows": [{"symbol": s, "companyName": n} for s, n in rows]}}}
+    elif source.format == "nse":
+        response.text = "Company Name,Industry,Symbol,Series,ISIN Code\n" + "\n".join(f"{n},Example,{s},EQ,ISIN" for s, n in rows)
+    else:
+        header = "<th>Code</th><th>Name</th>" if source.format == "lse" else "<th>Symbol</th><th>Security</th>" if definition.index_id == "sp500" else "<th>Ticker</th><th>Company</th>" if definition.market == "UK" else "<th>Symbol</th><th>Company</th>"
+        response.text = "<table><tr>" + header + "</tr>" + "".join(f"<tr><td>{s}</td><td>{n}</td></tr>" for s, n in rows) + "</table>"
+    return response
+
+
+@pytest.mark.parametrize("index_id", list(INDICES))
+def test_each_index_live_fetch_validation_cache_and_metadata(tmp_path, monkeypatch, index_id):
+    definition = INDICES[index_id]
+    source = sources_for(definition)[0]
+    response = index_response(definition, source, extras=True)
+    get = Mock(return_value=response)
+    monkeypatch.setattr("autot.universe.index_provider.requests.get", get)
+    provider = IndexUniverseProvider(index_id, tmp_path, clock=lambda: 100)
+    result = provider.load()
+    assert len(result.symbols) == definition.expected_size
+    assert result.downloaded == definition.expected_size + 4
+    assert result.filtered == 3
+    assert result.duplicates == 1
+    assert result.source == source.name and result.source_url == source.url
+    assert result.index_id == index_id and result.country == definition.country
+    assert result.fetched_at == 100 and not result.cached and not result.stale
+    assert result.records[0]["source_symbol"] in ("BRK.B", "BT.A", "M&M")
+    assert result.records[0]["yahoo_symbol"] == result.symbols[0]
+    assert result.records[0]["company_name"] == "Example Class A"
+    assert get.call_args.args == (source.url,)
+    assert get.call_args.kwargs["timeout"] == (5, 20)
+    assert get.call_args.kwargs.get("verify", True) is True
+    response.raise_for_status.assert_called_once()
+    cached = IndexUniverseProvider(index_id, tmp_path, clock=lambda: 86499).load()
+    assert cached.cached and not cached.stale and cached.fetched_at == 100
+    assert cached.records == result.records
+    assert get.call_count == 1
+    fresh = IndexUniverseProvider(index_id, tmp_path, clock=lambda: 86500).load()
+    assert not fresh.cached and fresh.fetched_at == 86500
+    assert get.call_count == 2
+
+
+@pytest.mark.parametrize("index_id", list(INDICES))
+def test_each_index_stale_fallback_and_total_failure(tmp_path, monkeypatch, index_id):
+    definition = INDICES[index_id]
+    get = Mock(return_value=index_response(definition, sources_for(definition)[0]))
+    monkeypatch.setattr("autot.universe.index_provider.requests.get", get)
+    provider = IndexUniverseProvider(index_id, tmp_path, clock=lambda: 100)
+    live = provider.load()
+    before = provider.cache_path.read_bytes()
+    get.side_effect = requests.Timeout("offline")
+    stale = IndexUniverseProvider(index_id, tmp_path, clock=lambda: 86500).load()
+    assert stale.cached and stale.stale and stale.fetched_at == 100
+    assert stale.symbols == live.symbols
+    assert any("stale cache" in w for w in stale.warnings)
+    assert provider.cache_path.read_bytes() == before
+    with pytest.raises(UniverseLoadError, match="no usable cache"):
+        IndexUniverseProvider(index_id, tmp_path / "empty").load()
+
+
+@pytest.mark.parametrize("index_id", ["nasdaq100", "ftse100", "ftse250", "nifty50"])
+def test_preferred_source_failure_uses_identified_same_index_fallback(tmp_path, monkeypatch, index_id):
+    definition = INDICES[index_id]
+    primary, fallback = sources_for(definition)
+    get = Mock(side_effect=[index_response(definition, primary, count=5), index_response(definition, fallback)])
+    monkeypatch.setattr("autot.universe.index_provider.requests.get", get)
+    result = IndexUniverseProvider(index_id, tmp_path).load()
+    assert result.source == fallback.name and result.source_url == fallback.url
+    assert any("Preferred source unavailable" in w for w in result.warnings)
+    assert any("unofficial" in w for w in result.warnings) == fallback.unofficial
+
+
+@pytest.mark.parametrize("index_id", list(INDICES))
+def test_partial_index_never_cached(tmp_path, monkeypatch, index_id):
+    definition = INDICES[index_id]
+    responses = [index_response(definition, source, count=5) for source in sources_for(definition)]
+    monkeypatch.setattr("autot.universe.index_provider.requests.get", Mock(side_effect=responses))
+    provider = IndexUniverseProvider(index_id, tmp_path)
+    with pytest.raises(UniverseLoadError):
+        provider.load()
+    assert not provider.cache_path.exists()
+
+
+@pytest.mark.parametrize("corruption", ["json", "version", "identity", "future", "nan", "negative", "symbols", "records", "duplicates", "counts", "source", "url", "warnings"])
+def test_index_corrupt_cache_not_used(tmp_path, monkeypatch, corruption):
+    definition = INDICES["nifty50"]
+    get = Mock(return_value=index_response(definition, sources_for(definition)[0]))
+    monkeypatch.setattr("autot.universe.index_provider.requests.get", get)
+    provider = IndexUniverseProvider("nifty50", tmp_path, clock=lambda: 100)
+    provider.load()
+    payload = json.loads(provider.cache_path.read_text())
+    r = payload["result"]
+    if corruption == "version": payload["version"] = -1
+    if corruption == "identity": r["index_id"] = "niftynext50"
+    if corruption == "future": r["fetched_at"] = 101
+    if corruption == "nan": r["fetched_at"] = float("nan")
+    if corruption == "negative": r["fetched_at"] = -1
+    if corruption == "symbols": r["symbols"][0] = "WRONG.NS"
+    if corruption == "records": r["records"][0]["market"] = "US"
+    if corruption == "duplicates": r["records"][1] = r["records"][0]
+    if corruption == "counts": r["downloaded"] += 1
+    if corruption == "source": r["source"] = "Other source"
+    if corruption == "url": r["source_url"] = "https://example.test"
+    if corruption == "warnings": r["warnings"] = "bad"
+    provider.cache_path.write_text("broken" if corruption == "json" else json.dumps(payload))
+    get.side_effect = requests.ConnectionError("offline")
+    with pytest.raises(UniverseLoadError):
+        provider.load()
+
+
+def test_index_cache_write_failure_keeps_live_result(tmp_path, monkeypatch):
+    definition = INDICES["sp500"]
+    monkeypatch.setattr("autot.universe.index_provider.requests.get", Mock(return_value=index_response(definition, sources_for(definition)[0])))
+    def fail(*args):
+        raise PermissionError("private path")
+    monkeypatch.setattr(IndexUniverseProvider, "_write_cache", fail)
+    result = IndexUniverseProvider("sp500", tmp_path).load()
+    assert not result.cached and len(result.symbols) == 500
+    assert any("could not be saved" in w for w in result.warnings)
+    assert all("private path" not in w for w in result.warnings)
+
+
+def test_index_catalogue_and_benchmarks():
+    assert COUNTRIES == ("United States", "United Kingdom", "India")
+    assert [len(indices_for_country(c)) for c in COUNTRIES] == [3, 2, 5]
+    with pytest.raises(ValueError, match="Unknown index"):
+        IndexUniverseProvider("unknown")
+
+
+def test_index_cache_respects_runtime_paths(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOT_DATA_DIR", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    assert IndexUniverseProvider("sp500").cache_dir == tmp_path / "universe_cache"
+    assert IndexUniverseProvider("sp500", "custom/cache").cache_dir == PROJECT_ROOT / "custom/cache"
+
+
+def test_nse_preserves_non_eq_constituents():
+    from autot.universe.index_sources import parse_source
+    source = sources_for(INDICES["nifty500"])[0]
+    response = Mock(text="Company Name,Industry,Symbol,Series,ISIN Code\nExample REIT,Realty,REIT,RR,ISIN1\nExample Equity,Tech,EQUITY,BE,ISIN2\n")
+    assert parse_source(source, response) == [("REIT", "Example REIT"), ("EQUITY", "Example Equity")]
+
+
+@pytest.mark.parametrize("payload", [{}, {"data": None}, {"data": {"data": {"rows": None}}},
+    {"data": {"data": {"rows": []}, "totalrecords": 101}},
+    {"data": {"data": {"rows": []}, "totalrecords": None}}])
+def test_nasdaq_invalid_or_paginated_response_rejected(payload):
+    from autot.universe.index_sources import parse_source
+    source = sources_for(INDICES["nasdaq100"])[0]
+    with pytest.raises(ValueError):
+        parse_source(source, Mock(json=Mock(return_value=payload)))
+
+
+def test_public_us_sources_use_dedicated_constituent_pages():
+    assert sources_for(INDICES["dow30"])[0].url.endswith("/List_of_Dow_Jones_Industrial_Average_companies")
+    assert sources_for(INDICES["nasdaq100"])[-1].url.endswith("/List_of_NASDAQ-100_companies")
+
+
+def test_html_parser_ignores_history_and_retains_share_classes():
+    from autot.universe.index_sources import parse_source
+    source = sources_for(INDICES["ftse100"])[-1]
+    response = Mock(text='''<table><tr><th>Added</th><th>Removed</th></tr><tr><td>OLD</td><td>OTHER</td></tr></table>
+    <table><tr><th>Company</th><th>Ticker</th><th>Sector</th></tr>
+    <tr><td>Example Group<sup>[1]</sup></td><td>BT.A</td><td>Telecom</td></tr>
+    <tr><td>Example Power</td><td>NG.</td><td>Utilities</td></tr>
+    <tr><td>Malformed</td></tr></table>''')
+    assert parse_source(source, response) == [("BT.A", "Example Group"), ("NG.", "Example Power"), (None, None)]
+
+
+@pytest.mark.parametrize("index_id", ["sp500", "nasdaq100", "nifty50", "ftse100"])
+def test_bad_live_response_uses_stale_cache_without_overwrite(tmp_path, monkeypatch, index_id):
+    definition = INDICES[index_id]
+    get = Mock(return_value=index_response(definition, sources_for(definition)[0]))
+    monkeypatch.setattr("autot.universe.index_provider.requests.get", get)
+    provider = IndexUniverseProvider(index_id, tmp_path, clock=lambda: 100)
+    provider.load()
+    original = provider.cache_path.read_bytes()
+    get.return_value = Mock(text="<html>Maintenance</html>", json=Mock(return_value={}))
+    stale = IndexUniverseProvider(index_id, tmp_path, clock=lambda: 86500).load()
+    assert stale.stale and stale.fetched_at == 100
+    assert provider.cache_path.read_bytes() == original
+
+
+@pytest.mark.parametrize("index_id,benchmark", [
+    ("sp500", "SPY"), ("nasdaq100", "^NDX"), ("dow30", "^DJI"),
+    ("ftse100", "^FTSE"), ("ftse250", "^FTMC"),
+    ("nifty50", "^NSEI"), ("niftynext50", "^NSEI"),
+    ("nifty100", "^NSEI"), ("nifty200", "^NSEI"), ("nifty500", "^NSEI"),
+])
+def test_index_specific_benchmark_mapping(index_id, benchmark):
+    assert INDICES[index_id].benchmark_symbol == benchmark
+    assert INDICES[index_id].benchmark_display_name
+    if index_id.startswith("nifty"):
+        assert INDICES[index_id].benchmark_display_name == "NIFTY 50"

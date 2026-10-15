@@ -51,6 +51,20 @@ def test_absolute_default_path_is_independent_of_cwd(tmp_path, monkeypatch):
     assert yfinance_cache.CACHE_DIR.is_absolute()
 
 
+def test_environment_override_creates_cache_outside_source_tree(tmp_path):
+    run_isolated("""
+import os
+from pathlib import Path
+os.environ['AUTOT_DATA_DIR'] = str(Path.cwd() / 'external' / 'data')
+from autot.market_data import yfinance_cache as setup
+from autot.universe.nasdaq_provider import NasdaqTraderProvider
+assert NasdaqTraderProvider().cache_dir == Path.cwd() / 'external' / 'data' / 'universe_cache'
+assert setup.ensure_yfinance_cache() == Path.cwd() / 'external' / 'data' / 'yfinance_cache'
+for name in ('tkr-tz.db', 'cookies.db', 'isin-tkr.db'):
+    assert (setup.CACHE_DIR / name).is_file()
+""", tmp_path)
+
+
 def test_creates_real_databases_and_preserves_repeated_access(tmp_path):
     run_isolated("""
 from pathlib import Path

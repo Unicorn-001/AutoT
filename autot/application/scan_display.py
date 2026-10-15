@@ -2,6 +2,7 @@
 
 import pandas as pd
 import streamlit as st
+from datetime import datetime, timezone
 
 
 OPPORTUNITY_COLUMNS = [
@@ -35,10 +36,26 @@ def qualification_explanation(row):
 def render_scan_results(saved):
     scan, settings = saved["outputs"], saved["settings"]
     diagnostics = saved.get("diagnostics", {})
+    metadata = saved.get("universe_metadata", {})
     total, analysed = len(scan["symbols"]), len(scan["results"])
     failed = total - analysed
-    st.caption(f"Results for {settings['universe']} · {settings['period']} · {settings['interval']}")
-    metrics = [("Universe loaded", total)]
+    if metadata.get("index_id"):
+        st.write(f"Market: {metadata['country']} · Selected universe: {metadata['index_name']}")
+        fetched = datetime.fromtimestamp(metadata["fetched_at"], timezone.utc).strftime("%d %b %Y %H:%M UTC")
+        status = "Stale cache" if metadata["stale"] else "Cache (within 24h TTL)" if metadata["cached"] else "Live"
+        st.caption(f"Source: {metadata['source']} · Fetched: {fetched} · Status: {status}")
+        for warning in metadata.get("warnings", []):
+            if metadata["stale"] and "stale cache" in warning:
+                st.warning(warning)
+            else:
+                st.caption(warning)
+    name = metadata.get("index_name") or settings['universe']
+    st.caption(f"Results for {name} · {settings['period']} · {settings['interval']}")
+    benchmark_symbol = metadata.get("benchmark_symbol", settings.get("benchmark_symbol", "SPY"))
+    benchmark_name = metadata.get("benchmark_display_name")
+    benchmark_label = f"{benchmark_name} ({benchmark_symbol})" if benchmark_name else benchmark_symbol
+    st.caption(f"Relative-strength benchmark: {benchmark_label}")
+    metrics = [("Constituents fetched" if metadata.get("index_id") else "Universe loaded", total)]
     if "usable_market_data_count" in diagnostics:
         metrics.append(("Usable market data", diagnostics["usable_market_data_count"]))
     metrics.extend([

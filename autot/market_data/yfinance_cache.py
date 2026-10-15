@@ -10,8 +10,10 @@ import peewee
 from peewee import DatabaseError
 from yfinance import cache
 
+from autot.runtime import configure_certificates, data_dir
 
-CACHE_DIR = Path(__file__).resolve().parents[2] / "data_storage" / "yfinance_cache"
+
+CACHE_DIR = data_dir() / "yfinance_cache"
 LOGGER = logging.getLogger(__name__)
 _initialization_lock = Lock()
 _configured = False
@@ -83,6 +85,8 @@ def ensure_yfinance_cache() -> Path:
     configuration; only first-use setup is serialized, not market downloads.
     """
     global _configured
+
+    configure_certificates()
 
     with _initialization_lock:
         if _configured:

@@ -3,7 +3,8 @@ from types import SimpleNamespace
 import main as cli
 
 
-def test_cli_uses_run_scan_and_preserves_messages_and_reports(monkeypatch, capsys):
+def test_cli_uses_run_scan_and_preserves_messages_and_reports(monkeypatch, capsys, tmp_path):
+    monkeypatch.setenv("AUTOT_DATA_DIR", str(tmp_path / "runtime"))
     settings = {
         "ACTIVE_UNIVERSE": "test.csv",
         "BACKTEST_PERIOD": "1y",
@@ -85,4 +86,4 @@ def test_cli_uses_run_scan_and_preserves_messages_and_reports(monkeypatch, capsy
     ]):
         assert report[0] is scan[key]
         assert report[2]["universe"] == "test.csv"
-    assert reports[2][1] == "data_storage/processed/trade_opportunities.csv"
+    assert reports[2][1] == str(tmp_path / "runtime" / "processed" / "trade_opportunities.csv")

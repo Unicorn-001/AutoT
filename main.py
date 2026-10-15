@@ -7,6 +7,7 @@ from autot import support_resistance, volume_strength
 from autot.application.scanner_service import run_scan
 from autot.backtest.backtester import run_backtest
 from autot.settings.configuration_manager import ConfigurationManager
+from autot.runtime import data_dir
 from autot.market_data.market_data_manager import MarketDataManager
 from autot.decision.trade_decision_builder import TradeDecisionBuilder
 from autot.indicators.technical_indicators import add_all_indicators
@@ -434,29 +435,30 @@ def main() -> None:
     print_stage("Saving reports")
     tracker.start("Save Reports")
 
-    os.makedirs("data_storage/processed/history", exist_ok=True)
+    processed_dir = data_dir() / "processed"
+    os.makedirs(processed_dir / "history", exist_ok=True)
 
     timestamp = run_time.strftime("%Y-%m-%d_%H%M%S")
     
     save_results_to_csv(
         ranked_results,
-        f"data_storage/processed/backtest_results_{timestamp}.csv",
+        str(processed_dir / f"backtest_results_{timestamp}.csv"),
         metadata
     )
     save_results_to_csv(
         top_results,
-        f"data_storage/processed/history/top_shortlist_{timestamp}.csv",
+        str(processed_dir / "history" / f"top_shortlist_{timestamp}.csv"),
         metadata
     )
     save_results_to_csv(
         trade_opportunities,
-        "data_storage/processed/trade_opportunities.csv",
+        str(processed_dir / "trade_opportunities.csv"),
         metadata,
     )
 
     save_results_to_csv(
         trade_opportunities,
-        f"data_storage/processed/history/trade_opportunities_{timestamp}.csv",
+        str(processed_dir / "history" / f"trade_opportunities_{timestamp}.csv"),
         metadata,
     )
     tracker.stop("Save Reports")
