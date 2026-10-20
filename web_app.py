@@ -10,6 +10,8 @@ st.set_option("client.showErrorDetails", "none")
 
 from autot.application.scanner_service import run_scan
 from autot.application.scan_display import render_scan_results
+from autot.application.paper_display import render_paper_dashboard, render_opportunity_actions
+from autot.paper_trade.scan_context import observe_analysis
 from autot.market_data.market_data_manager import MarketDataManager
 from autot.performance.performance_tracker import PerformanceTracker
 from autot.settings.configuration_manager import ConfigurationManager
@@ -36,6 +38,10 @@ def main():
     except (OSError, ValueError, KeyError):
         LOGGER.exception("Unable to initialize AutoT runtime/configuration")
         st.error("Unable to initialize AutoT. Ask the operator to check configuration and AUTOT_DATA_DIR permissions; details are in the server logs.")
+        return
+
+    if st.radio("Workspace", ["Scanner", "Paper Trading"], horizontal=True) == "Paper Trading":
+        render_paper_dashboard()
         return
 
     source = st.selectbox("Universe mode", ["Market Index", "Upload CSV"], key="universe_mode")
@@ -95,6 +101,7 @@ def main():
         progress = st.progress(0.0)
         errors = []
         diagnostics = {}
+        paper_signal_context = {}
 
         def on_stage(stage, details):
             messages = {
@@ -125,7 +132,8 @@ def main():
             scan = run_scan(
                 **settings,
                 tracker=PerformanceTracker(),
-                analyse_func=analyse_stock,
+                analyse_func=observe_analysis(analyse_stock, paper_signal_context, interval=settings["interval"],
+                                              market=definition.market if definition else None),
                 universe_loader=universe_loader,
                 batch_data_loader=MarketDataManager.get_batch_stock_data,
                 benchmark_data_loader=MarketDataManager.get_stock_data,
@@ -159,12 +167,14 @@ def main():
             benchmark_display_name=definition.benchmark_display_name if definition else "",
         )
         st.session_state["scan"] = {"outputs": scan, "settings": settings, "errors": errors,
-                                    "diagnostics": diagnostics, "universe_metadata": metadata}
+                                    "diagnostics": diagnostics, "universe_metadata": metadata,
+                                    "paper_signal_context": paper_signal_context}
 
     saved = st.session_state.get("scan")
     if saved is None:
         return
     render_scan_results(saved)
+    render_opportunity_actions(saved)
 
 
 if __name__ == "__main__":

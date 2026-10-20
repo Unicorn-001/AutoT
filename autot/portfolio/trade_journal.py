@@ -14,6 +14,7 @@ from datetime import datetime
 
 from autot.portfolio.open_journal_entry import OpenJournalEntry
 from pathlib import Path
+from autot.portfolio.pnl import calculate_pnl
 
 def save_trade_history_to_csv(
     trade_history: list[Trade],
@@ -170,9 +171,7 @@ def complete_journal_entry(
     Convert an open journal entry into a completed journal entry.
     """
 
-    realized_profit_loss = (
-        exit_price - open_entry.entry_price
-    ) * open_entry.quantity
+    realized_profit_loss = calculate_pnl(open_entry.entry_price, exit_price, open_entry.quantity)
 
     entry_value = (
         open_entry.entry_price * open_entry.quantity

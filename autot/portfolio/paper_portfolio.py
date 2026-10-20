@@ -10,6 +10,7 @@ from datetime import datetime
 
 from autot.portfolio.position import Position
 from autot.portfolio.trade import Trade
+from autot.portfolio.pnl import calculate_pnl
 
 
 class PaperPortfolio:
@@ -148,10 +149,7 @@ class PaperPortfolio:
                 raise ValueError(f"Missing current price for {symbol}.")
 
             current_price = current_prices[symbol]
-            entry_value = position.average_price * position.quantity
-            current_value = current_price * position.quantity
-
-            unrealised_profit_loss += current_value - entry_value
+            unrealised_profit_loss += calculate_pnl(position.average_price, current_price, position.quantity)
 
         return unrealised_profit_loss
     def calculate_portfolio_risk(self) -> float:

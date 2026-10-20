@@ -10,6 +10,7 @@ Purpose:
 from autot.broker.broker_interface import BrokerInterface
 from autot.decision.trade_decision import TradeDecision
 from autot.risk.risk_manager import RiskManager
+from autot.portfolio.pnl import calculate_pnl
 
 
 class PaperTrader:
@@ -162,9 +163,7 @@ class PaperTrader:
                 "reason": str(error),
             }
 
-        realized_profit_loss = (
-            exit_price - entry_price
-        ) * quantity
+        realized_profit_loss = calculate_pnl(entry_price, exit_price, quantity)
 
         return {
             "executed": True,

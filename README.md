@@ -15,8 +15,13 @@ with scan defaults when that file is absent. **Market Index** is the default: ch
 **Market**, then **Index**, period, interval and shortlist size,
 then select **Run Scan**. Results remain in the current browser session until the next scan.
 Ranked results, the top shortlist and trade opportunities come from the shared scanner service.
-The web app does not execute trades or write CLI reports. The CLI remains available with
+The web app does not execute real trades or write CLI reports. The CLI remains available with
 `python main.py`.
+
+The separate **Paper Trading** workspace records prospective simulated trades from
+completed daily opportunities, with durable pending entries and manual 5-minute
+position updates. It never connects a real broker. See [Paper Trading V1](PAPER_TRADING.md)
+for execution rules, currency handling, calendar limitations and manual checks.
 
 See [deployment readiness and local verification](DEPLOYMENT.md) for writable storage,
 certificate setup, uploads, dependency observations, and private-access assumptions.
