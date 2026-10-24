@@ -13,6 +13,7 @@ import sqlite3
 from uuid import uuid4
 
 from autot.paper_trade.sessions import utc
+from autot.paper_trade import audit
 from autot.runtime import data_dir
 from autot.utils.financial_validation import decimal_value as D
 
@@ -65,11 +66,13 @@ class Ledger:
                                (identity, intent, row["trade_id"]))
             db.execute("CREATE UNIQUE INDEX IF NOT EXISTS trade_intent_unique "
                        "ON trades(opportunity_id, intent_key)")
+            audit.initialize(db, self.decode)
 
     @contextmanager
     def connection(self):
         db = sqlite3.connect(self.path, timeout=10)
         db.row_factory = sqlite3.Row
+        db.execute("PRAGMA foreign_keys=ON")
         try:
             with db:
                 yield db
@@ -160,9 +163,12 @@ class Ledger:
                        "VALUES (?, ?, ?, ?, 0, ?, ?)",
                        (trade_id, key, json.dumps(snapshot, allow_nan=False),
                         json.dumps(state, allow_nan=False), identity, intent))
-            return self.decode(db.execute("SELECT * FROM trades WHERE trade_id=?", (trade_id,)).fetchone())
+            trade = self.decode(db.execute("SELECT * FROM trades WHERE trade_id=?", (trade_id,)).fetchone())
+            audit.append(db, trade, audit.event("TRADE_CREATED", state, when=snapshot["created_at"]),
+                         revision_before=None, revision_after=0)
+            return trade
 
-    def update(self, trade, state):
+    def update(self, trade, state, *, events=(), run_id=None):
         with self.connection() as db:
             db.execute("BEGIN IMMEDIATE")
             if trade["status"] == "PENDING_ENTRY" and state["fill_price"] is not None:
@@ -174,4 +180,63 @@ class Ledger:
                                  (json.dumps(state, allow_nan=False), trade["trade_id"], trade["revision"]))
             if changed.rowcount != 1:
                 raise ConcurrentUpdate("Trade changed during monitoring; retry the update.")
+            items = list(events)
+            kinds = {e['event_type'] for e in items}
+            # Required transitions are enforced at the persistence boundary too.
+            required = []
+            if not trade.get('fill_price') and state.get('fill_price'):
+                required.append(('ENTRY_FILLED', state['filled_at']))
+            if trade['status'] != 'CLOSED' and state['status'] == 'CLOSED':
+                reason = state['exit_reason']
+                required.append(('STOP_HIT' if reason in ('STOP', 'GAP_STOP') else
+                                 'TARGET_HIT' if reason in ('TARGET', 'GAP_TARGET') else
+                                 'MANUAL_CLOSE_EXECUTED', state['closed_at']))
+                required.append(('TRADE_CLOSED', state['closed_at']))
+            if trade['status'] != 'CANCELLED' and state['status'] == 'CANCELLED':
+                required.append(('TRADE_CANCELLED', state['cancelled_at']))
+            if not trade.get('manual_close_requested_at') and state.get('manual_close_requested_at'):
+                required.append(('MANUAL_CLOSE_REQUESTED', state['manual_close_requested_at']))
+            if state['review_required'] and (not trade['review_required'] or
+                                             trade['review_reason'] != state['review_reason']):
+                required.append(('REVIEW_REQUIRED', audit.timestamp()))
+            for kind, when in required:
+                if kind not in kinds:
+                    items.append(audit.event(kind, state, when=when, before=trade['status'],
+                                             reason=state.get('review_reason') if kind == 'REVIEW_REQUIRED'
+                                             else state.get('exit_reason')))
+            for item in items:
+                audit.append(db, trade, item, revision_before=trade['revision'],
+                             revision_after=trade['revision'] + 1, run_id=run_id)
         return self.get(trade["trade_id"])
+
+
+    def events(self, trade_id):
+        with self.connection() as db:
+            return [dict(r) for r in db.execute(
+                "SELECT * FROM paper_trade_events WHERE trade_id=? ORDER BY event_id", (trade_id,))]
+
+    def start_run(self, provider, started_at):
+        run_id = str(uuid4())
+        with self.connection() as db:
+            db.execute("INSERT INTO paper_update_runs "
+                       "(run_id, started_at, trigger_type, provider, status, summary_json) "
+                       "VALUES (?, ?, 'MANUAL', ?, 'RUNNING', '{}')", (run_id, started_at, provider))
+        return run_id
+
+    def finish_run(self, run_id, counts, status, summary):
+        with self.connection() as db:
+            db.execute("UPDATE paper_update_runs SET " + ','.join(k + '=?' for k in counts) +
+                       ", completed_at=?, status=?, summary_json=? WHERE run_id=? AND status='RUNNING'",
+                       (*counts.values(), audit.timestamp(), status, json.dumps(summary), run_id))
+
+    def get_run(self, run_id):
+        with self.connection() as db:
+            row = db.execute("SELECT * FROM paper_update_runs WHERE run_id=?", (run_id,)).fetchone()
+            if row is None:
+                raise ValueError("Paper update run not found.")
+            return dict(row)
+
+    def recent_runs(self, limit=50):
+        with self.connection() as db:
+            return [dict(r) for r in db.execute(
+                "SELECT * FROM paper_update_runs ORDER BY rowid DESC LIMIT ?", (limit,))]

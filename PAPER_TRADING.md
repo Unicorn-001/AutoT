@@ -255,3 +255,188 @@ has filled, request manual close on that exact duplicate and process the next
 completed bar. Do not backdate a cancellation, alter execution prices, or delete
 rows to hide a fill. This may produce realized P&L rather than the pre-entry
 balances above. No correction was applied automatically during this fix.
+
+## Paper Trading Audit & Performance V1
+
+### Architecture and migration
+
+The audit extension adds `paper_trade_events` and `paper_update_runs` alongside
+`accounts` and `trades`. It does not change the signal, sizing, calendar, entry,
+stop/target, ambiguity, gap, or manual-close execution rules. The journal and
+performance service are read-only projections of stored trades and audit evidence.
+No backtest results are mixed with this prospective journal.
+
+**Pre-audit trades receive a baseline snapshot only. AutoT does not fabricate historical lifecycle events.**
+
+At the next ledger initialization, an immediate SQLite transaction creates the
+new tables, indexes and append-only triggers. Every existing trade without audit
+history receives exactly one `AUDIT_BASELINE_CREATED` event containing its complete
+persisted snapshot/state/identity/revision. Both event and recording timestamps
+are the actual migration time, not the historical fill/exit time. The baseline
+has no fabricated bar data. Existing account/trade rows, IDs, snapshots, prices,
+P&L, reservations and revisions remain unchanged. There are no destructive table
+rebuilds. Initialization is repeatable and serialized across connections; failed
+migration rolls back its DDL and baseline inserts together.
+
+New confirmations receive `TRADE_CREATED`, never a baseline. Updates/deletes of
+events are rejected by SQLite triggers; foreign keys protect their trade/run
+references on application connections. Append-only protection is an application
+integrity measure, not cryptographic tamper-proofing against a database owner.
+Back up the database with SQLite's backup API before first use. Do not delete or
+reset the existing ledger. An SQLite backup includes committed WAL contents;
+copying only the main file while the app is running may not.
+
+### Event semantics and transactions
+
+Controlled event types are:
+
+- `AUDIT_BASELINE_CREATED`: current persisted state observed during migration.
+- `TRADE_CREATED`, `TRADE_CANCELLED`: genuine confirmation/cancellation operations.
+- `ENTRY_ELIGIBLE`: the eligible session encountered during a monitor pass.
+- `ENTRY_BAR_PROCESSED`, `ENTRY_FILLED`: verified opening bar and its entry fill.
+- `POSITION_CHECKED`, `POSITION_UPDATED`: each completed, contiguous processed
+  bar and the resulting still-open mark. A closed bar has a check and closure
+  events instead of an open-position update.
+- `STOP_HIT`, `TARGET_HIT`, `TRADE_CLOSED`: the actual exit reason and closure;
+  gap reasons remain `GAP_STOP`/`GAP_TARGET` and retain the observed open price.
+- `MANUAL_CLOSE_REQUESTED`, `MANUAL_CLOSE_EXECUTED`: separate request and fill.
+- `REVIEW_REQUIRED`: a new review condition or changed review reason.
+- `DATA_UNAVAILABLE`: provider/verification failure at a required history start.
+- `MISSING_EXPECTED_BAR`: an expected completed slot absent from supplied history.
+
+Bar OHLC audit columns are Decimal text in account quote units (GBP, not GBp).
+The trade's original quote units/scale remain in its immutable snapshot. Each
+bar event carries the evaluated state as payload, including any ambiguity flag.
+`event_time` is the logical operation time or bar start; `recorded_at` is actual
+UTC persistence time. A baseline's logical time is its recording time because no
+historical audit observation exists. Intrabar event times remain unknown.
+
+Event idempotency keys are SHA-256 hashes of deterministic trade ID, event type,
+and semantic identity: bar timestamp for bar events, eligibility time for
+eligibility, expected history slot for missing/unavailable data, or committed
+revision for non-bar state transitions. Baselines use a fixed per-trade identity.
+A unique constraint enforces these keys. Repeated missing/data failures at the
+same required slot are recorded once in the timeline; every retry still has its
+own update-run record. A repeated unchanged review does not create another
+review event. Streamlit rendering and journal reads create no monitor events.
+
+Evaluation collects events without writing. The ledger's existing immediate
+transaction checks capital and optimistic revision, updates state and inserts
+all corresponding events before committing. A failed event insert rolls back
+the trade update; a rejected state update cannot leave a phantom fill/exit event.
+A catch-up pass may record pending → open → closed within a single revision pair.
+Each event retains its intermediate status transition. The persistence boundary
+also enforces required fill, close, cancellation and manual-request events.
+Conflicting workers cannot append events for a rejected revision. Network calls
+remain outside write transactions.
+
+### Update runs
+
+Every explicit **Update Paper Positions** operation first commits a unique
+`RUNNING` record with trigger `MANUAL` and provider class. Even an empty/no-due
+pass has a run. Rendering, refreshes and navigation do not initiate runs.
+Successfully persisted bar events reference their run ID. At completion the run
+records considered/changed/opened/closed trades, committed bars, warnings, errors,
+completion time and a small summary with concurrent conflicts and abort status.
+An entry that fills and closes in one pass counts as both opened and closed.
+`trades_updated` counts changed execution/review fields, not revision-only writes.
+Warnings count affected trade checks; errors count failed operations, including a
+failure to persist a recovery/review state. No-due checks of trades already under
+review remain warnings.
+
+- `SUCCESS`: completed without errors or warnings, including a clean no-op pass.
+- `PARTIAL`: review/missing-data/concurrency warnings, or an error after some bars
+  were committed.
+- `FAILED`: an error/abort with no committed bars.
+- `RUNNING`: not finalized; a hard process kill or storage failure may leave it
+  here. It is never silently labelled successful on restart.
+
+Counters are finalized at normal/exceptional completion. After a hard kill,
+a RUNNING record's counters may be incomplete; committed events remain the durable
+operation evidence. Runs are separate from per-trade transactions, so a later
+trade's failure does not erase earlier successful updates. There is no unattended
+worker or automatic retry scheduler in this phase.
+
+### Performance and journal
+
+The dashboard retains its summary-first layout. Enable **Show Performance /
+Journal** to see separate USD/GBP/INR summaries, journal rows, a selectable trade's
+event timeline, separate raw trade/audit JSON and the latest 50 update runs.
+Existing details/actions and raw snapshots remain available.
+
+Closed-trade summaries include completed trades, winners/losers/breakeven, win
+rate, gross profit, negative gross loss, net realized P&L, average positive win,
+average negative loss, profit factor, average trade return, best/worst trade by
+realized P&L, mean holding duration, mean signal/actual-fill R:R and mean entry
+slippage. Breakevens are included in the win-rate denominator. Returns are
+unweighted trade returns using actual entry notional. Profit factor is gross
+profit divided by absolute gross loss; without losses it is shown unavailable
+with an explanation, not a fabricated finite value. Empty averages are unavailable.
+Best/worst retain trade IDs (ties use journal order). Cancelled and pending trades
+appear in the journal but are excluded from completed-trade statistics.
+
+Signal R:R is the original stored ratio; actual R:R uses the directional distance
+from fill to original stop/target. Invalid/nonpositive risk or negative reward
+makes actual R:R unavailable. Neither ratio changes execution. Entry slippage is
+`(fill - signal) / signal × 100` for BUY and `(signal - fill) / signal × 100`
+for SELL: positive means adverse. Holding duration is exit bar-start minus fill
+bar-start; it is not tick-accurate and a same-bar close has duration zero.
+Decimal values are retained internally with no cent-rounding before aggregation;
+only presentation rounds. Currency groups are never combined or FX-converted.
+
+The UI explicitly states **Small sample — insufficient for strategy conclusions.**
+These descriptive gross simulated statistics are not evidence of statistical
+significance and do not include transaction costs or validate strategy quality.
+
+### MFE / MAE evidence and limitations
+
+Excursions require a genuine durable `ENTRY_FILLED` and `POSITION_CHECKED` bar
+history covering the recorded position through its last watermark. Existing
+closed pre-audit trades show **Unavailable for pre-audit trade**. The service
+never downloads historical bars or infers excursions from a baseline. A pending
+pre-audit trade can acquire genuine evidence when it later fills under audit;
+an already-open pre-audit trade lacks complete entry-to-current evidence.
+
+For a BUY, MFE is the greatest known rise above fill and MAE the greatest known
+fall below fill; SELL reverses the direction. Both are nonnegative absolute
+price movements per share in account currency, plus movement/fill × 100. They
+are not quantity-multiplied P&L. Bars held through their close contribute high/low.
+An exit-at-open contributes only that open. For stop/target intrabar exits,
+only the open and executed level are provably observed while in the position;
+the rest of the exit bar could occur after closure. Those excursions are labelled
+**known movement lower bounds; exit-bar order unknown**. This avoids inventing
+post-exit opportunity or adverse movement from full exit-bar extremes. Tick-level
+exact excursions cannot be recovered from 5-minute OHLC alone. Pending trades
+without bars show unavailable; completed evidence with no movement can be zero.
+
+### Verify the existing forward ledger after first audit initialization
+
+Use **Paper Trading → Show Performance / Journal** after starting the app yourself.
+Check MRNA remains TARGET +$208.13, MPC remains STOP -$94.91, and USD net P&L is
++$113.21 (the unrounded sum is 113.21465209960962). The cancelled duplicate remains
+cancelled. There should still be no open positions or reserved capital. The
+initial capital metric is $10,000; available capital with these closed trades is
+$10,113.21. Independently inspect IDs and event counts with read-only SQLite:
+
+```sql
+SELECT trade_id, json_extract(snapshot, '$.symbol') AS symbol,
+       json_extract(state, '$.status') AS status,
+       json_extract(state, '$.realized_pnl') AS realized_pnl
+FROM trades ORDER BY rowid;
+
+SELECT trade_id, event_type, COUNT(*) AS count
+FROM paper_trade_events GROUP BY trade_id, event_type ORDER BY trade_id, event_type;
+
+PRAGMA integrity_check;
+PRAGMA foreign_key_check;
+```
+
+Expected IDs:
+
+- MPC closed: `294d7e3c-c169-4a21-8885-a58e6aaf7826`
+- MPC cancelled: `27eebe40-65b9-4de6-9546-c1d7e906d15c`
+- MRNA closed: `7ed3627b-568f-46fc-8c29-59a46ed03a7c`
+
+Each of these three terminal trades must have exactly one
+`AUDIT_BASELINE_CREATED` and no historical entry/stop/target/close events. Select
+each timeline, refresh/restart, and confirm the baseline count remains one.

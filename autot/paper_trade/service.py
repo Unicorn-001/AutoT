@@ -6,6 +6,7 @@ from decimal import Decimal
 import json
 import logging
 
+from autot.paper_trade import audit
 from autot.paper_trade.intraday import HistoryUnavailable
 from autot.paper_trade.ledger import ConcurrentUpdate
 from autot.paper_trade.sessions import BAR, MARKETS, SessionCalendar, utc
@@ -111,13 +112,14 @@ def close_at(trade, state, price, stamp, reason):
                  pnl_percent=str(pnl / (D(state["fill_price"]) * trade["quantity"]) * 100), exit_reason=reason)
 
 
-def evaluate_bars(trade, batch, *, end, calendar):
+def evaluate_bars(trade, batch, *, end, calendar, events=None):
     """Consume only a contiguous prefix of completed regular-session bars.
 
     Opening gaps execute at OPEN (including targets). Otherwise stop takes
     precedence over target. A manual close executes at the first bar OPEN at or
     after the request, never at a stale last price or before historical events.
     """
+    events = events if events is not None else []
     state = {key: trade[key] for key in STATE_FIELDS}
     if state["status"] not in ("PENDING_ENTRY", "OPEN"):
         return state
@@ -134,13 +136,27 @@ def evaluate_bars(trade, batch, *, end, calendar):
     scale = D(trade["quote_scale"])
     stop, target = D(trade["stop_loss"]), D(trade["take_profit"])
     for stamp in calendar.completed_starts(trade["market"], start, end):
+        if state['status'] == 'PENDING_ENTRY':
+            events.append(audit.event('ENTRY_ELIGIBLE', state, when=trade['eligible_at'],
+                                      before=state['status'], identity=trade['eligible_at']))
         if stamp not in bars:
             state.update(review_required=True, review_reason="Missing expected 5m bar or calendar exception; review required.")
+            events.append(audit.event('MISSING_EXPECTED_BAR', state, when=stamp.isoformat(),
+                                      before=state['status'], reason=state['review_reason'],
+                                      identity=stamp.isoformat()))
+            events[-1]['bar_time'] = stamp.isoformat()
             break
+        before = state['status']
         bar = bars[stamp]
         opening, high, low, closing = (getattr(bar, k) * scale for k in ("open", "high", "low", "close"))
         if state["status"] == "PENDING_ENTRY":
+            events.append(audit.event('ENTRY_BAR_PROCESSED', state, when=stamp.isoformat(),
+                                      before=before, bar=bar, scale=scale))
             state.update(status="OPEN", fill_price=str(opening), filled_at=stamp.isoformat())
+            entry_event = audit.event('ENTRY_FILLED', state, when=stamp.isoformat(),
+                                     before=before, bar=bar, scale=scale)
+            entry_event['price'] = str(opening)
+            events.append(entry_event)
         buy = trade["side"] == "BUY"
         gap_stop = opening <= stop if buy else opening >= stop
         gap_target = opening >= target if buy else opening <= target
@@ -161,6 +177,18 @@ def evaluate_bars(trade, batch, *, end, calendar):
             state.update(current_price=str(closing), unrealized_pnl=str(pnl),
                          pnl_percent=str(pnl / (D(state["fill_price"]) * trade["quantity"]) * 100))
         state["last_checked_at"] = stamp.isoformat()
+        events.append(audit.event('POSITION_CHECKED', state, when=stamp.isoformat(),
+                                  before='OPEN', bar=bar, scale=scale))
+        if state['status'] == 'CLOSED':
+            reason = state['exit_reason']
+            kind = ('STOP_HIT' if reason in ('STOP', 'GAP_STOP') else
+                    'TARGET_HIT' if reason in ('TARGET', 'GAP_TARGET') else 'MANUAL_CLOSE_EXECUTED')
+            for event_type in (kind, 'TRADE_CLOSED'):
+                events.append(audit.event(event_type, state, when=stamp.isoformat(), before='OPEN',
+                                          bar=bar, scale=scale, reason=reason))
+        else:
+            events.append(audit.event('POSITION_UPDATED', state, when=stamp.isoformat(),
+                                      before='OPEN', bar=bar, scale=scale))
         if state["status"] == "CLOSED":
             break
     return state
@@ -208,31 +236,73 @@ class PaperTradingService:
         return self.ledger.update(trade, state)
 
     def update_positions(self):
-        """One bounded pass; callable unchanged from a future scheduled worker."""
-        updated = []
-        for trade in self.ledger.all():
-            if trade["status"] not in ("PENDING_ENTRY", "OPEN"):
-                continue
-            state = {key: trade[key] for key in STATE_FIELDS}
-            end = utc(self.clock())
-            start = utc(trade["last_checked_at"]) + BAR if trade["last_checked_at"] else utc(trade["eligible_at"])
-            if next(self.calendar.completed_starts(trade["market"], start, end), None) is None:
-                updated.append(trade)
-                continue
-            try:
-                batch = self.provider.get_intraday_bars(trade["symbol"], start, end, interval="5m")
-                state = evaluate_bars(trade, batch, end=end, calendar=self.calendar)
-                updated.append(self.ledger.update(trade, state))
-            except ConcurrentUpdate:
-                updated.append(self.ledger.get(trade["trade_id"]))
-            except Exception:
-                LOGGER.exception("Paper monitoring failed for trade %s", trade["trade_id"])
-                # On a failed transaction/provider call keep all previously committed execution state.
-                state = {key: trade[key] for key in STATE_FIELDS}
-                state.update(review_required=True,
-                             review_reason="Intraday update could not be verified (history, quote units or capital). Review server logs; no execution invented.")
+        """One explicit manual pass, with a durable run even when nothing is due."""
+        run_id = self.ledger.start_run(type(self.provider).__name__, utc(self.clock()).isoformat())
+        self.last_update_run_id = run_id
+        counts = dict.fromkeys(('trades_considered', 'trades_updated', 'trades_opened', 'trades_closed',
+                               'bars_processed', 'warnings_count', 'errors_count'), 0)
+        updated, conflicts = [], 0
+        fatal = False
+        try:
+            for trade in self.ledger.all():
+                if trade['status'] not in ('PENDING_ENTRY', 'OPEN'):
+                    continue
+                counts['trades_considered'] += 1
+                end = utc(self.clock())
+                start = utc(trade['last_checked_at']) + BAR if trade['last_checked_at'] else utc(trade['eligible_at'])
+                if next(self.calendar.completed_starts(trade['market'], start, end), None) is None:
+                    updated.append(trade)
+                    if trade['review_required']:
+                        counts['warnings_count'] += 1
+                    continue
+                events = []
+                phase = 'provider'
                 try:
-                    updated.append(self.ledger.update(trade, state))
+                    batch = self.provider.get_intraday_bars(trade['symbol'], start, end, interval='5m')
+                    state = evaluate_bars(trade, batch, end=end, calendar=self.calendar, events=events)
+                    phase = 'persistence'
+                    result = self.ledger.update(trade, state, events=events, run_id=run_id)
+                    counts['bars_processed'] += sum(e['event_type'] == 'POSITION_CHECKED' for e in events)
+                    counts['trades_opened'] += int(not trade['fill_price'] and bool(state['fill_price']))
+                    counts['trades_closed'] += int(state['status'] == 'CLOSED')
                 except ConcurrentUpdate:
-                    updated.append(self.ledger.get(trade["trade_id"]))
+                    conflicts += 1
+                    counts['warnings_count'] += 1
+                    updated.append(self.ledger.get(trade['trade_id']))
+                    continue
+                except Exception:
+                    counts['errors_count'] += 1
+                    LOGGER.exception('Paper monitoring failed for trade %s', trade['trade_id'])
+                    # Roll back evaluated events along with a rejected state change.
+                    state = {key: trade[key] for key in STATE_FIELDS}
+                    state.update(review_required=True,
+                                 review_reason='Intraday update could not be verified (history, quote units or capital). Review server logs; no execution invented.')
+                    failures = []
+                    if phase == 'provider':
+                        failures.append(audit.event('DATA_UNAVAILABLE', state, when=end.isoformat(),
+                                                    before=trade['status'], reason=state['review_reason'],
+                                                    identity=start.isoformat()))
+                    try:
+                        result = self.ledger.update(trade, state, events=failures, run_id=run_id)
+                    except ConcurrentUpdate:
+                        conflicts += 1
+                        counts['warnings_count'] += 1
+                        updated.append(self.ledger.get(trade['trade_id']))
+                        continue
+                counts['trades_updated'] += int(any(state[k] != trade[k] for k in STATE_FIELDS))
+                counts['warnings_count'] += int(state['review_required'])
+                updated.append(result)
+        except BaseException:
+            fatal = True
+            counts['errors_count'] += 1
+            raise
+        finally:
+            if fatal or counts['errors_count']:
+                status = 'PARTIAL' if counts['bars_processed'] else 'FAILED'
+            elif counts['warnings_count']:
+                status = 'PARTIAL'
+            else:
+                status = 'SUCCESS'
+            self.ledger.finish_run(run_id, counts, status, {'concurrent_conflicts': conflicts,
+                                                          'aborted': fatal})
         return updated

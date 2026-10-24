@@ -10,6 +10,8 @@ import streamlit as st
 
 from autot.paper_trade.intraday import YahooIntradayProvider
 from autot.paper_trade.ledger import Ledger
+from autot.paper_trade.performance import actual_fill_rr
+from autot.application.paper_journal import render_performance_journal
 from autot.paper_trade.service import PaperTradingService, quote_scale, size_position
 from autot.paper_trade.sessions import MARKETS
 from autot.utils.financial_validation import decimal_value as D
@@ -139,23 +141,6 @@ def format_timestamp(value):
     return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
-def actual_fill_rr(trade):
-    """Informational only; never alter the stored signal ratio or execution state."""
-    if trade.get("status") not in ("OPEN", "CLOSED") or not trade.get("filled_at"):
-        return None
-    try:
-        fill, stop, target = (D(trade.get(k)) for k in ("fill_price", "stop_loss", "take_profit"))
-        if trade.get("side") == "BUY":
-            risk, reward = fill - stop, target - fill
-        elif trade.get("side") == "SELL":
-            risk, reward = stop - fill, fill - target
-        else:
-            return None
-        return reward / risk if risk > 0 and reward >= 0 else None
-    except ValueError:
-        return None
-
-
 def trade_summary(trade):
     """Build a presentation row from stored values, without recalculating P&L."""
     t = trade
@@ -245,7 +230,12 @@ def render_paper_dashboard():
         if st.button("Update Paper Positions", key="paper_update"):
             with st.spinner("Processing available completed 5-minute bars…"):
                 updated = service.update_positions()
-            st.success(f"Checked {len(updated)} pending/open paper trades.")
+            run = service.ledger.get_run(service.last_update_run_id)
+            message = f"Checked {len(updated)} pending/open paper trades. Run status: {run['status']}."
+            if run['status'] == 'SUCCESS':
+                st.success(message)
+            else:
+                st.warning(message + ' Inspect review details and update run history.')
         summaries = service.ledger.summaries()
         if summaries:
             render_accounts(summaries)
@@ -277,6 +267,7 @@ def render_paper_dashboard():
                         elif st.button("Request Manual Close", key=f"close_{trade['trade_id']}"):
                             service.request_manual_close(trade["trade_id"])
                             st.rerun()
+        render_performance_journal(service.ledger)
     except ValueError as error:
         st.error(str(error))
     except Exception:
