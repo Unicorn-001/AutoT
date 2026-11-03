@@ -440,3 +440,32 @@ Expected IDs:
 Each of these three terminal trades must have exactly one
 `AUDIT_BASELINE_CREATED` and no historical entry/stop/target/close events. Select
 each timeline, refresh/restart, and confirm the baseline count remains one.
+
+## Settings V1 and configuration provenance
+
+See [SETTINGS.md](SETTINGS.md) for the centralized settings store, immutable profile
+versions and full operator workflow. New prospective trades retain the settings
+revision, profile ID/name/version, configuration hash, mode and validated trading
+configuration captured by their scan. A later Save or Activate cannot rewrite those
+snapshots. The actual sizing risk remains recorded explicitly. Existing trades are
+labeled `PRE_SETTINGS_BASELINE` only when read; no detailed history is fabricated,
+and their IDs, balances, P&L and audit events are unchanged.
+
+USD/GBP/INR settings capital is a default for **new accounts only**. Existing account
+capital is read from the ledger and never reset by Settings. New position/count/
+portfolio-risk/daily-creation limits are opt-in and checked atomically at creation,
+including pending reservations across both modes within each currency account.
+Gap fills retain the existing strict available-capital check and execution rules.
+
+`RESEARCH` has separate signal identity and performance reporting, while sharing
+strict account capital reservations. It receives no additional capital. Default
+forward performance excludes research, retaining historical pre-settings trades
+without inventing a mode. Journal filters/grouping support profile/version/hash,
+mode, market/index, side and regime; unavailable historical values stay unknown.
+
+After saving settings, run a fresh scan to use the new profile. In Paper Trading,
+inspect the raw trade snapshot to verify `configuration_source`, `settings_version`,
+`strategy_profile_id`, `strategy_profile_name`, `strategy_profile_version`,
+`strategy_config_hash`, `mode`, `trading_settings` and `execution_risk_percent`.
+News and Monitoring settings are placeholders only; updates still require the
+existing manual action. No scheduler or new execution semantics are enabled.

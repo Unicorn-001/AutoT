@@ -71,10 +71,14 @@ def render_scan_results(saved):
 
     st.subheader("Trade Opportunities")
     st.caption("BUY / SELL results with trade quality ≥ 70, ordered by opportunity score.")
+    from autot.settings.models import SettingsState
+    limit = (SettingsState.model_validate(saved['settings_state']).settings.scanner.top_trade_opportunity_count
+             if saved.get('settings_state') else None)
+    displayed_opportunities = scan['trade_opportunities'][:limit]
     if scan["trade_opportunities"]:
-        st.dataframe(opportunity_table(scan["trade_opportunities"]), hide_index=True)
+        st.dataframe(opportunity_table(displayed_opportunities), hide_index=True)
         with st.expander("Why this qualified", expanded=True):
-            for row in scan["trade_opportunities"]:
+            for row in displayed_opportunities:
                 st.write(qualification_explanation(row))
     else:
         st.info("No actionable BUY or SELL opportunities in this scan.")

@@ -21,6 +21,10 @@ class AdxStrategy(StrategyInterface):
         HOLD otherwise
     """
 
+    def __init__(self, parameters=None):
+        from autot.settings.models import Adx
+        self.parameters = parameters or Adx()
+
     def generate_signal(self, data: pd.DataFrame) -> dict:
         if data.empty:
             return {
@@ -63,7 +67,7 @@ class AdxStrategy(StrategyInterface):
                 "confidence": 0.0,
             }
 
-        if adx > 25 and di_plus > di_minus:
+        if adx > self.parameters.threshold and di_plus > di_minus:
             return {
                 "signal": "BUY",
                 "reason": (
@@ -73,7 +77,7 @@ class AdxStrategy(StrategyInterface):
                 "confidence": 0.75,
             }
 
-        if adx > 25 and di_minus > di_plus:
+        if adx > self.parameters.threshold and di_minus > di_plus:
             return {
                 "signal": "SELL",
                 "reason": (

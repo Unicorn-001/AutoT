@@ -15,8 +15,10 @@ from autot.paper_trade.scan_context import observe_analysis
 from autot.market_data.market_data_manager import MarketDataManager
 from autot.performance.performance_tracker import PerformanceTracker
 from autot.settings.configuration_manager import ConfigurationManager
+from autot.settings.store import SettingsStore
+from autot.application.settings_display import render_settings
 from autot.runtime import initialize_runtime
-from autot.universe.index_definitions import COUNTRIES, INDICES, indices_for_country
+from autot.universe.index_definitions import COUNTRIES, INDICES, indices_for_country, normalize_country_index_selection
 from autot.universe.index_provider import IndexUniverseProvider
 from autot.universe.nasdaq_provider import UniverseLoadError
 from autot.universe.providers import ProviderUniverseLoader, UploadedCSVProvider
@@ -34,13 +36,20 @@ def main():
     try:
         initialize_runtime()
         config = ConfigurationManager()
-        default_top_n = max(1, config.get_int("TOP_N_STOCKS", 10))
     except (OSError, ValueError, KeyError):
         LOGGER.exception("Unable to initialize AutoT runtime/configuration")
         st.error("Unable to initialize AutoT. Ask the operator to check configuration and AUTOT_DATA_DIR permissions; details are in the server logs.")
         return
 
-    if st.radio("Workspace", ["Scanner", "Paper Trading"], horizontal=True) == "Paper Trading":
+    store = SettingsStore()
+    active = store.load()
+    if store.warning:
+        st.warning(store.warning)
+    workspace = st.radio("Workspace", ["Scanner", "Paper Trading", "Settings"], horizontal=True)
+    if workspace == 'Settings':
+        render_settings()
+        return
+    if workspace == "Paper Trading":
         render_paper_dashboard()
         return
 
@@ -48,10 +57,15 @@ def main():
     definition = None
     benchmark_symbol = "SPY"
     if source == "Market Index":
-        country = st.selectbox("Market", COUNTRIES, key="market")
+        country = st.selectbox("Market", COUNTRIES, index=list(COUNTRIES).index(active.settings.scanner.country), key="market")
+        choices = [d.index_id for d in indices_for_country(country)]
+        selected_index = normalize_country_index_selection(
+            country, st.session_state.get('scanner_index', active.settings.scanner.index))
+        if 'scanner_index' in st.session_state and st.session_state['scanner_index'] != selected_index:
+            st.session_state['scanner_index'] = selected_index
         index_id = st.selectbox(
-            "Index", [d.index_id for d in indices_for_country(country)],
-            format_func=lambda value: INDICES[value].index_name, key=f"index_{country}",
+            "Index", choices, index=choices.index(selected_index),
+            format_func=lambda value: INDICES[value].index_name, key="scanner_index",
         )
         definition = INDICES[index_id]
         benchmark_symbol = definition.benchmark_symbol
@@ -67,12 +81,15 @@ def main():
                 "Universe CSV", type=["csv"], max_upload_size=1,
                 help="UTF-8 CSV with a symbol column; up to 1 MB and 10,000 symbols. Processed in memory.",
             )
-        period = st.text_input("Backtest period", value=config.get_string("BACKTEST_PERIOD"))
-        interval = st.text_input("Interval", value=config.get_string("BACKTEST_INTERVAL"))
-        top_n = st.number_input("Number of top stocks", min_value=1, value=default_top_n, step=1)
+        period = st.text_input("Backtest period", value=active.settings.scanner.history_period)
+        interval = st.text_input("Interval", value=active.settings.scanner.interval)
+        top_n = st.number_input("Number of top stocks", min_value=1, value=active.settings.scanner.top_ranked_count, step=1)
         submitted = st.form_submit_button("Run Scan")
 
     if submitted:
+        if store.warning:
+            st.error("Resolve the settings warning in Settings before starting a new scan.")
+            return
         settings = {
             "universe": definition.index_id if definition else source, "period": period.strip(),
             "interval": interval.strip(), "top_n": int(top_n), "benchmark_symbol": benchmark_symbol,
@@ -141,6 +158,7 @@ def main():
                 on_error=on_error,
                 on_stage=on_stage,
                 diagnostics=diagnostics,
+                settings_state=active,
             )
         except UniverseLoadError:
             LOGGER.exception("AutoT universe unavailable")
@@ -168,7 +186,7 @@ def main():
         )
         st.session_state["scan"] = {"outputs": scan, "settings": settings, "errors": errors,
                                     "diagnostics": diagnostics, "universe_metadata": metadata,
-                                    "paper_signal_context": paper_signal_context}
+                                    "paper_signal_context": paper_signal_context, "settings_state": active.model_dump(mode="json")}
 
     saved = st.session_state.get("scan")
     if saved is None:

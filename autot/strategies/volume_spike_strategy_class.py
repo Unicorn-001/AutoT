@@ -16,6 +16,10 @@ class VolumeSpikeStrategy(StrategyInterface):
     Volume spike confirmation strategy.
     """
 
+    def __init__(self, parameters=None):
+        from autot.settings.models import VolumeSpike
+        self.parameters = parameters or VolumeSpike()
+
     def generate_signal(self, data: pd.DataFrame) -> dict:
         if data.empty:
             return {
@@ -61,7 +65,7 @@ class VolumeSpikeStrategy(StrategyInterface):
                 "confidence": 0.0,
             }
 
-        if volume_ratio >= 2.0 and close > ema_20:
+        if volume_ratio >= self.parameters.threshold and close > ema_20:
             return {
                 "signal": "BUY",
                 "reason": (
@@ -70,7 +74,7 @@ class VolumeSpikeStrategy(StrategyInterface):
                 "confidence": 0.75,
             }
 
-        if volume_ratio >= 2.0 and close < ema_20:
+        if volume_ratio >= self.parameters.threshold and close < ema_20:
             return {
                 "signal": "SELL",
                 "reason": (

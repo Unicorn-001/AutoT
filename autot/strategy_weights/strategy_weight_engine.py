@@ -6,7 +6,6 @@ Purpose:
     Apply market-regime-based weights to strategy results.
 """
 
-from autot.config.strategy_weight_settings import MARKET_REGIME_WEIGHTS
 
 
 class StrategyWeightEngine:
@@ -18,9 +17,14 @@ class StrategyWeightEngine:
     def apply_weights(
         strategy_results: list[dict],
         market_regime: str,
+        settings=None,
     ) -> list[dict]:
 
-        regime_weights = MARKET_REGIME_WEIGHTS.get(market_regime, {})
+        from autot.settings.models import Strategies
+        from autot.strategies.registry.strategy_registry import REGISTRY
+        settings = settings or Strategies()
+        regime_weights = {item.implementation().get_name(): getattr(settings, item.strategy_id).effective_weight(market_regime)
+                          for item in REGISTRY}
 
         weighted_results = []
 

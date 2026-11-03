@@ -40,3 +40,11 @@ COUNTRIES = tuple(dict.fromkeys(item.country for item in _DEFINITIONS))
 
 def indices_for_country(country: str) -> list[IndexDefinition]:
     return [item for item in INDICES.values() if item.country == country]
+
+
+def normalize_country_index_selection(country: str, index: str) -> str:
+    """Keep a valid selection, otherwise use the registry's first country index."""
+    choices = indices_for_country(country)
+    if not choices:
+        raise ValueError(f'No indices configured for country: {country}')
+    return index if any(item.index_id == index for item in choices) else choices[0].index_id

@@ -113,7 +113,14 @@ class PerformanceService:
     def __init__(self, ledger):
         self.ledger = ledger
 
-    def report(self):
+    def report(self, *, mode='FORWARD_TEST', filters=None, group_by=None):
+        allowed = {'strategy_profile_id', 'strategy_profile_name', 'strategy_profile_version',
+                   'strategy_config_hash', 'mode', 'market', 'index_name', 'side', 'market_regime',
+                   'configuration_source'}
+        if mode not in ('FORWARD_TEST', 'RESEARCH', 'PRE_SETTINGS_BASELINE', 'ALL'):
+            raise ValueError('Invalid performance mode.')
+        if set(filters or {}) - allowed or (group_by is not None and group_by not in allowed):
+            raise ValueError('Unsupported performance segmentation field.')
         # One read snapshot prevents a concurrent monitor separating fills/evidence.
         with self.ledger.connection() as db:
             db.execute('BEGIN')
@@ -121,5 +128,20 @@ class PerformanceService:
             events = {}
             for row in db.execute('SELECT * FROM paper_trade_events ORDER BY event_id'):
                 events.setdefault(row['trade_id'], []).append(dict(row))
+        if mode == 'FORWARD_TEST':
+            trades = [t for t in trades if t.get('mode') in (None, 'FORWARD_TEST')]
+        elif mode == 'PRE_SETTINGS_BASELINE':
+            trades = [t for t in trades if t.get('configuration_source') == 'PRE_SETTINGS_BASELINE']
+        elif mode != 'ALL':
+            trades = [t for t in trades if t.get('mode') == mode]
+        trades = [t for t in trades if all(t.get(k) == v for k, v in (filters or {}).items())]
         journal = [journal_entry(t, events.get(t['trade_id'], [])) for t in trades]
-        return dict(journal=journal, performance=summarize(journal), events=events)
+        groups = {}
+        if group_by:
+            for entry in journal:
+                groups.setdefault(entry['trade'].get(group_by), []).append(entry)
+        segments = {key: summarize(rows) for key, rows in groups.items()}
+        result = dict(journal=journal, performance=summarize(journal), events=events)
+        if group_by:
+            result["segments"] = segments
+        return result

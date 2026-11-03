@@ -9,14 +9,15 @@ Purpose:
 import pandas as pd
 
 from autot.runtime import data_dir, project_path
+from autot.settings.models import Scanner
 
 
 # Scan defaults for a fresh checkout; existing operator settings take precedence.
 DEFAULT_SETTINGS = {
     "ACTIVE_UNIVERSE": "autot/universe/us_stocks.csv",
-    "BACKTEST_PERIOD": "5y",
-    "BACKTEST_INTERVAL": "1d",
-    "TOP_N_STOCKS": "10",
+    "BACKTEST_PERIOD": Scanner().history_period,
+    "BACKTEST_INTERVAL": Scanner().interval,
+    "TOP_N_STOCKS": str(Scanner().top_ranked_count),
 }
 
 

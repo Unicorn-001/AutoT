@@ -16,8 +16,8 @@ class StrategyManager:
     Runs all registered strategies.
     """
 
-    def __init__(self) -> None:
-        self.registry = StrategyRegistry()
+    def __init__(self, settings=None) -> None:
+        self.registry = StrategyRegistry(settings)
 
     def run_all(self, data: pd.DataFrame) -> list[dict]:
         """

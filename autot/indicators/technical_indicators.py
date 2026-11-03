@@ -40,16 +40,16 @@ def add_rsi(data: pd.DataFrame, window: int = 14) -> pd.DataFrame:
     return data
 
 
-def add_macd(data: pd.DataFrame) -> pd.DataFrame:
+def add_macd(data: pd.DataFrame, fast=12, slow=26, signal=9) -> pd.DataFrame:
     data = data.copy()
     close = get_close_series(data)
 
-    ema_12 = close.ewm(span=12, adjust=False).mean()
-    ema_26 = close.ewm(span=26, adjust=False).mean()
+    ema_12 = close.ewm(span=fast, adjust=False).mean()
+    ema_26 = close.ewm(span=slow, adjust=False).mean()
 
     data["MACD"] = ema_12 - ema_26
     data["MACD_SIGNAL"] = data["MACD"].ewm(
-        span=9,
+        span=signal,
         adjust=False,
     ).mean()
 
@@ -239,15 +239,17 @@ def add_stochastic(
 
     return data
 
-def add_all_indicators(data: pd.DataFrame) -> pd.DataFrame:
-    data = add_ema(data)
-    data = add_rsi(data)
-    data = add_macd(data)
-    data = add_bollinger_bands(data)
-    data = add_supertrend(data)
-    data = add_adx(data)
-    data = add_volume_indicators(data)
-    data = add_momentum(data)
-    data = add_atr(data)
-    data = add_stochastic(data)
+def add_all_indicators(data: pd.DataFrame, settings=None) -> pd.DataFrame:
+    from autot.settings.models import Strategies
+    s = settings or Strategies()
+    data = add_ema(data, s.EMA_RSI.fast, s.EMA_RSI.slow)
+    data = add_rsi(data, s.EMA_RSI.rsi_period)
+    data = add_macd(data, s.MACD.fast, s.MACD.slow, s.MACD.signal)
+    data = add_bollinger_bands(data, s.BOLLINGER.period, s.BOLLINGER.deviation)
+    data = add_supertrend(data, s.SUPERTREND.atr_period, s.SUPERTREND.multiplier)
+    data = add_adx(data, s.ADX.period)
+    data = add_volume_indicators(data, s.VOLUME_SPIKE.period)
+    data = add_momentum(data, s.MOMENTUM.period)
+    data = add_atr(data, s.ATR.period)
+    data = add_stochastic(data, s.STOCHASTIC.period, s.STOCHASTIC.smooth_period)
     return data

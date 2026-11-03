@@ -1,21 +1,4 @@
-"""
-File: strategy_settings.py
-Project: AutoT
+"""Legacy compatibility view. Runtime scans use the typed Strategy settings."""
+from autot.settings.models import Strategies
 
-Purpose:
-    Configure which strategies are enabled in AutoT.
-"""
-
-
-ENABLED_STRATEGIES = {
-    "EMA_RSI": True,
-    "MACD": True,
-    "BOLLINGER": True,
-    "BREAKOUT": True,
-    "SUPERTREND": True,
-    "ADX": True,
-    "VOLUME_SPIKE": True,
-    "MOMENTUM": True,
-    "ATR": True,
-    "STOCHASTIC": True,
-}
+ENABLED_STRATEGIES = {name: getattr(Strategies(), name).enabled for name in Strategies.model_fields}

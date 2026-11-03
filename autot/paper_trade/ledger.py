@@ -27,6 +27,7 @@ def opportunity_identity(snapshot):
     return json.dumps([
         "signal-v1", snapshot["symbol"], snapshot["market"], snapshot["index_name"],
         snapshot["side"], utc(snapshot["signal_time"]).isoformat(), snapshot["signal_timeframe"],
+        *(["RESEARCH"] if snapshot.get("mode") == "RESEARCH" else []),
     ], separators=(",", ":"), ensure_ascii=True)
 
 
@@ -81,7 +82,9 @@ class Ledger:
 
     @staticmethod
     def decode(row):
-        return dict(json.loads(row["snapshot"]), **json.loads(row["state"]),
+        snapshot = json.loads(row["snapshot"])
+        snapshot.setdefault("configuration_source", "PRE_SETTINGS_BASELINE")
+        return dict(snapshot, **json.loads(row["state"]),
                     trade_id=row["trade_id"], revision=row["revision"],
                     confirmation_key=row["confirmation_key"],
                     opportunity_id=row["opportunity_id"], intent_key=row["intent_key"])
@@ -157,6 +160,8 @@ class Ledger:
                 raise ValueError("Use the existing paper account capital for this currency.")
             if D(snapshot["intended_position_value"]) > summary["available"]:
                 raise ValueError("Insufficient available paper capital, including pending reservations.")
+            from autot.settings.trade_policy import enforce_admission
+            enforce_admission(snapshot, [self.decode(r) for r in db.execute('SELECT * FROM trades')], summary)
             trade_id = str(uuid4())
             db.execute("INSERT INTO trades "
                        "(trade_id, confirmation_key, snapshot, state, revision, opportunity_id, intent_key) "

@@ -21,6 +21,10 @@ class AtrStrategy(StrategyInterface):
         HOLD otherwise
     """
 
+    def __init__(self, parameters=None):
+        from autot.settings.models import Atr
+        self.parameters = parameters or Atr()
+
     def generate_signal(self, data: pd.DataFrame) -> dict:
         if data.empty:
             return {
@@ -43,7 +47,7 @@ class AtrStrategy(StrategyInterface):
                 "confidence": 0.0,
             }
 
-        if len(data) < 20:
+        if len(data) < self.parameters.average_period:
             return {
                 "signal": "HOLD",
                 "reason": "Insufficient data for ATR average.",
@@ -89,7 +93,7 @@ class AtrStrategy(StrategyInterface):
                 "confidence": 0.0,
             }
 
-        atr_average = data[("ATR", "")].rolling(window=20).mean().iloc[-1]
+        atr_average = data[("ATR", "")].rolling(window=self.parameters.average_period).mean().iloc[-1]
 
         if pd.isna(atr_average):
             return {

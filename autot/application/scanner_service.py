@@ -26,6 +26,7 @@ def run_scan(
     on_error=None,
     on_stage=None,
     diagnostics=None,
+    settings_state=None,
 ) -> dict:
     """Load, analyse and rank symbols using supplied dependencies.
 
@@ -33,6 +34,10 @@ def run_scan(
     changing return keys or existing callbacks. Missing loader entries have an
     unverified cause; the batch loader does not expose individual rejections.
     """
+    from autot.settings.store import SettingsStore
+    from autot.settings.context import bind_analysis
+    settings_state = settings_state or SettingsStore().load()
+    analyse_func = bind_analysis(analyse_func, settings_state.settings)
     if diagnostics is not None:
         diagnostics.clear()
     if on_stage is not None:

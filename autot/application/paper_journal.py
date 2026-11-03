@@ -52,7 +52,19 @@ def render_performance_journal(ledger):
         return
     st.warning('Small sample — insufficient for strategy conclusions.')
     st.caption('Closed trades only in performance summaries. Gross simulated results, separated by currency; no FX total.')
-    report = PerformanceService(ledger).report()
+    mode = st.selectbox('Performance mode', ['FORWARD_TEST', 'RESEARCH', 'PRE_SETTINGS_BASELINE'],
+                        help='Forward view includes existing pre-settings trades without inventing their mode. Research is always separate.')
+    report = PerformanceService(ledger).report(mode=mode)
+    with st.expander('Filter / group performance'):
+        fields = ['strategy_profile_id', 'strategy_profile_version', 'strategy_config_hash', 'market', 'index_name', 'side', 'market_regime']
+        field = st.selectbox('Segment field', fields)
+        values = list(dict.fromkeys(e['trade'].get(field) for e in report['journal']))
+        choice = st.selectbox('Segment value', range(len(values)+1),
+                              format_func=lambda i: 'All' if i == 0 else str(values[i-1]) if values[i-1] is not None else 'Unknown / pre-settings')
+        report = PerformanceService(ledger).report(mode=mode, filters={field: values[choice-1]} if choice else None, group_by=field)
+        st.dataframe([{'Segment': str(k) if k is not None else 'Unknown / pre-settings', 'Currency': c,
+                       'Completed trades': m['completed_trades'], 'Net realized P&L': str(m['net_realized_pnl'])}
+                      for k, v in report['segments'].items() for c, m in v.items()], hide_index=True)
     for currency, metrics in report['performance'].items():
         st.markdown(f'**{currency}**')
         counts = [('Completed trades', 'completed_trades'), ('Winners', 'winners'), ('Losers', 'losers'),

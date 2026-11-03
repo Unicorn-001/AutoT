@@ -199,20 +199,32 @@ class PaperTradingService:
         self.ledger, self.provider = ledger, provider
         self.calendar, self.clock = calendar or SessionCalendar(), clock or now_utc
 
-    def existing_opportunity(self, opportunity, *, market, index_name, signal_time, timeframe, **_):
+    def existing_opportunity(self, opportunity, *, market, index_name, signal_time, timeframe, mode=None, **_):
         return self.ledger.by_opportunity(dict(symbol=opportunity["symbol"], side=opportunity["signal"],
                                               market=market, index_name=index_name, signal_time=signal_time,
-                                              signal_timeframe=timeframe))
+                                              signal_timeframe=timeframe, mode=mode))
 
-    def confirm(self, confirmation_key, opportunity, *, create_another=False, **context):
+    def confirm(self, confirmation_key, opportunity, *, create_another=False, settings_state=None, **context):
         existing = self.ledger.by_confirmation(confirmation_key)
         if existing:
             return existing
+        from autot.settings.models import SettingsState, TradeSettingsSnapshot
+        from autot.settings.store import SettingsStore
+        explicit_settings = settings_state is not None
+        if settings_state is None:
+            store = SettingsStore()
+            settings_state = store.load()
+            if store.warning:
+                raise ValueError('Resolve the settings storage warning before creating a new paper trade.')
+        settings_state = SettingsState.model_validate(settings_state.model_dump(mode='json'))
         if not create_another:
-            existing = self.existing_opportunity(opportunity, **context)
+            existing = self.existing_opportunity(opportunity, mode=settings_state.settings.general.mode, **context)
             if existing:
                 return existing
+        if explicit_settings and D(context['risk_percent']) != D(settings_state.settings.risk.risk_per_trade_percent):
+            raise ValueError('Risk differs from the scan profile. Save settings and run a new scan.')
         snapshot = build_snapshot(opportunity, created_at=self.clock(), calendar=self.calendar, **context)
+        snapshot.update(TradeSettingsSnapshot.from_state(settings_state, context['risk_percent']).model_dump(mode='json'))
         return self.ledger.confirm(confirmation_key, snapshot, initial_state(), create_another=create_another)
 
     def cancel(self, trade_id):

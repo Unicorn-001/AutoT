@@ -66,7 +66,9 @@ def analyse_stock(
     tracker: PerformanceTracker,
     ) -> tuple[dict, object]:
     tracker.start(f"{symbol}_indicators")
-    data = add_all_indicators(data)
+    from autot.settings.context import analysis_settings
+    active_settings = analysis_settings()
+    data = add_all_indicators(data, active_settings.strategies)
     trend_strength = TrendStrengthEngine.calculate(data)
     relative_strength = RelativeStrengthEngine.calculate(
         stock_data=data,
@@ -75,7 +77,7 @@ def analyse_stock(
     tracker.stop(f"{symbol}_indicators")
 
     tracker.start(f"{symbol}_strategies")
-    strategy_manager = StrategyManager()
+    strategy_manager = StrategyManager(active_settings.strategies)
     strategy_results = strategy_manager.run_all(data)
     tracker.stop(f"{symbol}_strategies")
 
@@ -84,6 +86,7 @@ def analyse_stock(
     weighted_strategy_results = StrategyWeightEngine.apply_weights(
         strategy_results,
         regime["regime"],
+        active_settings.strategies,
     )
 
     consensus = calculate_consensus_signal(weighted_strategy_results)
@@ -92,6 +95,7 @@ def analyse_stock(
         symbol=symbol,
         data=data,
         consensus=consensus,
+        settings=active_settings,
     )
     volume_strength = VolumeStrengthEngine.calculate(data)
 

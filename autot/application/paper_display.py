@@ -15,6 +15,8 @@ from autot.application.paper_journal import render_performance_journal
 from autot.paper_trade.service import PaperTradingService, quote_scale, size_position
 from autot.paper_trade.sessions import MARKETS
 from autot.utils.financial_validation import decimal_value as D
+from autot.settings.models import SettingsState
+from autot.settings.store import SettingsStore
 
 
 LOGGER = logging.getLogger(__name__)
@@ -39,6 +41,7 @@ def render_opportunity_actions(saved):
                     st.session_state["paper_draft"] = {
                         "key": str(uuid4()), "row": deepcopy(row), "context": deepcopy(context),
                         "metadata": deepcopy(saved.get("universe_metadata", {})),
+                        "settings_state": deepcopy(saved.get("settings_state")),
                     }
             if not ready:
                 st.caption(f"{row['symbol']}: paper confirmation needs a new scan using a completed 1d candle.")
@@ -51,12 +54,16 @@ def render_review():
         return
     try:
         service = paper_service()
+        state_data = draft.get('settings_state')
+        settings_state = SettingsState.model_validate(state_data) if state_data else None
+        active = settings_state or SettingsStore().load()
+        risk_config = active.settings.risk
         row, context, metadata = draft["row"], draft["context"], draft["metadata"]
         existing = service.ledger.by_confirmation(draft["key"])
         if not existing and not draft.get("create_another", False):
             existing = service.existing_opportunity(
                 row, market=context["market"], index_name=metadata.get("index_name") or "Custom upload",
-                signal_time=context["signal_time"], timeframe="1d")
+                signal_time=context["signal_time"], timeframe="1d", mode=active.settings.general.mode)
         if existing:
             st.success(f"Paper trade {existing['trade_id']} · Status: {existing['status'].replace('_', ' ')}")
             if st.button("Create another paper trade", key="paper_new"):
@@ -80,13 +87,15 @@ def render_review():
                   "Agreement": row["agreement"], "Trade quality": row["trade_quality_score"],
                   "Historical score": row["score"], "Market regime": row["market_regime"]})
         account = service.ledger.summaries().get(currency)
+        st.caption(f'Profile: {active.profile.profile_name} v{active.profile.profile_version} · {active.settings.general.mode} · {active.profile.configuration_hash}')
+        st.caption('Capital defaults apply only to a NEW account. Existing persisted ledger capital is used unchanged.')
         with st.form("paper_confirmation"):
             unit = st.selectbox("Scanner quote unit", ["GBp", "GBP"] if market == "UK" else [currency],
                                 help="UK Yahoo listings commonly use pence (GBp). Verify the quote unit; monitoring checks provider units before any execution.")
             capital = st.number_input(f"Account capital ({currency})", min_value=1.0,
-                                      value=float(account["capital"]) if account else 10000.0,
+                                      value=float(account["capital"]) if account else active.settings.paper_trading.capital(currency),
                                       disabled=account is not None, key=f"paper_capital_{currency}")
-            risk = st.number_input("Risk %", min_value=0.01, max_value=100.0, value=1.0, key="paper_risk")
+            risk = st.number_input("Risk %", min_value=0.01, max_value=100.0, value=risk_config.risk_per_trade_percent, disabled=settings_state is not None, key=f"paper_risk_{active.profile.configuration_hash}" if settings_state else "paper_risk")
             acknowledged = st.checkbox("I verified the quote unit and understand this is simulated trading.")
             preview = st.form_submit_button("Calculate quantity")
             confirmed = st.form_submit_button("Confirm Paper Trade")
@@ -100,7 +109,7 @@ def render_review():
         if preview:
             st.session_state["paper_preview"] = (draft["key"], parameters)
         if confirmed:
-            if not acknowledged:
+            if risk_config.manual_confirmation_required and not acknowledged:
                 st.error("Verify the quote unit and acknowledge simulated execution first.")
             elif st.session_state.get("paper_preview") != (draft["key"], parameters):
                 st.error("Calculate quantity with these inputs before confirming.")
@@ -108,7 +117,7 @@ def render_review():
                 trade = service.confirm(
                     draft["key"], row, create_another=draft.get("create_another", False), market=market, index_name=metadata.get("index_name") or "Custom upload",
                     signal_time=context["signal_time"], timeframe="1d", quote_currency=unit,
-                    capital=capital, risk_percent=risk, metadata=metadata,
+                    capital=capital, risk_percent=risk, metadata=metadata, settings_state=settings_state,
                 )
                 st.success(f"Paper trade {trade['trade_id']} · Status: {trade['status'].replace('_', ' ')}")
         if st.button("Discard review", key="paper_discard"):

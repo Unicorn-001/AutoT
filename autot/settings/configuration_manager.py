@@ -16,6 +16,12 @@ class ConfigurationManager:
 
     def __init__(self) -> None:
         self.settings = SettingsLoader.load()
+        from autot.settings.store import SettingsStore
+        self.active = SettingsStore().load()
+        if self.active.settings_version:
+            scanner = self.active.settings.scanner
+            self.settings.update(BACKTEST_PERIOD=scanner.history_period, BACKTEST_INTERVAL=scanner.interval,
+                                 TOP_N_STOCKS=str(scanner.top_ranked_count))
 
     def get_string(self, key: str, default: str = "") -> str:
         return self.settings.get(key, default)

@@ -1,0 +1,942 @@
+{
+  "up": {
+    "row": {
+      "symbol": "TEST",
+      "signal": "BUY",
+      "confidence": 61.49,
+      "agreement": 52.38,
+      "market_regime": "STRONG_UPTREND",
+      "entry_price": 157.39999999999998,
+      "stop_loss": 154.25199999999998,
+      "take_profit": 163.69599999999997,
+      "risk_reward_ratio": 2.0,
+      "quantity": 31,
+      "position_value": 4879.4,
+      "max_loss": 97.59,
+      "score": -10.0,
+      "profit_loss": 0,
+      "return_percent": 0.0,
+      "max_drawdown": 0.0,
+      "win_rate": 0.0,
+      "total_trades": 0,
+      "buy_votes": 5,
+      "sell_votes": 1,
+      "hold_votes": 4,
+      "buy_score": 4.2,
+      "sell_score": 0.63,
+      "hold_score": 2.0,
+      "decision_reason": "Final signal is BUY. BUY Score=4.2, SELL Score=0.63, HOLD Score=2.0.",
+      "ema_rsi_signal": "BUY",
+      "macd_signal": "BUY",
+      "bollinger_signal": "HOLD",
+      "breakout_signal": "HOLD",
+      "supertrend_signal": "BUY",
+      "trade_quality_score": 52.85,
+      "trade_quality_label": "WEAK",
+      "trend_strength_score": 100.0,
+      "trend_strength_label": "VERY_STRONG_TREND",
+      "volume_ratio": 1.09,
+      "volume_strength_score": 50.0,
+      "volume_strength_label": "NORMAL_VOLUME",
+      "volume_confirmed": false,
+      "nearest_support": 0.0,
+      "nearest_resistance": 0.0,
+      "distance_to_support_percent": 0.0,
+      "distance_to_resistance_percent": 0.0,
+      "support_resistance_score": 85.0,
+      "support_resistance_label": "OPEN_SPACE",
+      "breakout_confirmation_score": 85.0,
+      "stock_return_percent": 29.65,
+      "benchmark_return_percent": 29.65,
+      "relative_strength_percent": 0.0,
+      "relative_strength_score": 55.0,
+      "relative_strength_label": "SLIGHTLY_OUTPERFORMING",
+      "stars": "\u2605\u2605\u2606\u2606\u2606",
+      "opportunity_score": 57.36
+    },
+    "decision": {
+      "symbol": "TEST",
+      "final_signal": "BUY",
+      "confidence": 61.49,
+      "agreement": 52.38,
+      "market_regime": "STRONG_UPTREND",
+      "buy_score": 4.2,
+      "sell_score": 0.63,
+      "hold_score": 2.0,
+      "entry_price": 157.39999999999998,
+      "stop_loss": 154.25199999999998,
+      "take_profit": 163.69599999999997,
+      "risk_reward_ratio": 2.0,
+      "decision_reason": "Final signal is BUY. BUY Score=4.2, SELL Score=0.63, HOLD Score=2.0.",
+      "position_size": {
+        "account_size": 10000,
+        "risk_percent": 1.0,
+        "risk_amount": 100.0,
+        "entry_price": 157.4,
+        "stop_loss": 154.25,
+        "risk_per_share": 3.15,
+        "quantity": 31,
+        "position_value": 4879.4,
+        "max_loss": 97.59
+      }
+    },
+    "strategies": [
+      {
+        "signal": "BUY",
+        "reason": "EMA20 151.70 is above EMA50 142.71 and RSI 100.00 is above 50.",
+        "confidence": 0.75,
+        "strategy": "EMA_RSI_Strategy"
+      },
+      {
+        "signal": "BUY",
+        "reason": "MACD 4.20 is above signal line 4.20.",
+        "confidence": 0.7,
+        "strategy": "MACD_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 157.40 is between Bollinger Bands 144.60 and 158.80.",
+        "confidence": 0.5,
+        "strategy": "Bollinger_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 157.40 is within previous 20-day range 144.40 to 157.80.",
+        "confidence": 0.5,
+        "strategy": "Breakout_Strategy"
+      },
+      {
+        "signal": "BUY",
+        "reason": "Close 157.40 is above SuperTrend lower band 151.40, indicating bullish trend.",
+        "confidence": 0.75,
+        "strategy": "SuperTrend_Strategy"
+      },
+      {
+        "signal": "BUY",
+        "reason": "ADX 100.00 indicates a strong trend, and DI+ 30.00 is above DI- 0.00.",
+        "confidence": 0.75,
+        "strategy": "ADX_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Volume ratio 1.09 does not show a strong spike.",
+        "confidence": 0.5,
+        "strategy": "Volume_Spike_Strategy"
+      },
+      {
+        "signal": "BUY",
+        "reason": "Momentum is positive at 6.00.",
+        "confidence": 0.7,
+        "strategy": "Momentum_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "ATR 2.00 is not above average 2.00.",
+        "confidence": 0.5,
+        "strategy": "ATR_Strategy"
+      },
+      {
+        "signal": "SELL",
+        "reason": "Stochastic K 89.80 is overbought and below D 89.80.",
+        "confidence": 0.7,
+        "strategy": "Stochastic_Strategy"
+      }
+    ],
+    "weighted": [
+      {
+        "signal": "BUY",
+        "reason": "EMA20 151.70 is above EMA50 142.71 and RSI 100.00 is above 50.",
+        "confidence": 0.9,
+        "strategy": "EMA_RSI_Strategy",
+        "original_confidence": 0.75,
+        "weight": 1.2
+      },
+      {
+        "signal": "BUY",
+        "reason": "MACD 4.20 is above signal line 4.20.",
+        "confidence": 0.84,
+        "strategy": "MACD_Strategy",
+        "original_confidence": 0.7,
+        "weight": 1.2
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 157.40 is between Bollinger Bands 144.60 and 158.80.",
+        "confidence": 0.45,
+        "strategy": "Bollinger_Strategy",
+        "original_confidence": 0.5,
+        "weight": 0.9
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 157.40 is within previous 20-day range 144.40 to 157.80.",
+        "confidence": 0.55,
+        "strategy": "Breakout_Strategy",
+        "original_confidence": 0.5,
+        "weight": 1.1
+      },
+      {
+        "signal": "BUY",
+        "reason": "Close 157.40 is above SuperTrend lower band 151.40, indicating bullish trend.",
+        "confidence": 0.9,
+        "strategy": "SuperTrend_Strategy",
+        "original_confidence": 0.75,
+        "weight": 1.2
+      },
+      {
+        "signal": "BUY",
+        "reason": "ADX 100.00 indicates a strong trend, and DI+ 30.00 is above DI- 0.00.",
+        "confidence": 0.75,
+        "strategy": "ADX_Strategy",
+        "original_confidence": 0.75,
+        "weight": 1.0
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Volume ratio 1.09 does not show a strong spike.",
+        "confidence": 0.5,
+        "strategy": "Volume_Spike_Strategy",
+        "original_confidence": 0.5,
+        "weight": 1.0
+      },
+      {
+        "signal": "BUY",
+        "reason": "Momentum is positive at 6.00.",
+        "confidence": 0.805,
+        "strategy": "Momentum_Strategy",
+        "original_confidence": 0.7,
+        "weight": 1.15
+      },
+      {
+        "signal": "HOLD",
+        "reason": "ATR 2.00 is not above average 2.00.",
+        "confidence": 0.5,
+        "strategy": "ATR_Strategy",
+        "original_confidence": 0.5,
+        "weight": 1.0
+      },
+      {
+        "signal": "SELL",
+        "reason": "Stochastic K 89.80 is overbought and below D 89.80.",
+        "confidence": 0.63,
+        "strategy": "Stochastic_Strategy",
+        "original_confidence": 0.7,
+        "weight": 0.9
+      }
+    ],
+    "consensus": {
+      "buy_votes": 5,
+      "sell_votes": 1,
+      "hold_votes": 4,
+      "buy_score": 4.2,
+      "sell_score": 0.63,
+      "hold_score": 2.0,
+      "final_signal": "BUY"
+    }
+  },
+  "down": {
+    "row": {
+      "symbol": "TEST",
+      "signal": "HOLD",
+      "confidence": 48.32,
+      "agreement": 39.39,
+      "market_regime": "STRONG_DOWNTREND",
+      "entry_price": 72.60000000000001,
+      "stop_loss": 72.60000000000001,
+      "take_profit": 72.60000000000001,
+      "risk_reward_ratio": 0.0,
+      "quantity": 0,
+      "position_value": 0.0,
+      "max_loss": 0.0,
+      "score": -10.0,
+      "profit_loss": 0,
+      "return_percent": 0.0,
+      "max_drawdown": 0.0,
+      "win_rate": 0.0,
+      "total_trades": 0,
+      "buy_votes": 2,
+      "sell_votes": 4,
+      "hold_votes": 4,
+      "buy_score": 1.53,
+      "sell_score": 3.3,
+      "hold_score": 2.0,
+      "decision_reason": "Signal changed to HOLD because confidence 48.32% is below minimum threshold 55.0%.",
+      "ema_rsi_signal": "SELL",
+      "macd_signal": "SELL",
+      "bollinger_signal": "HOLD",
+      "breakout_signal": "HOLD",
+      "supertrend_signal": "BUY",
+      "trade_quality_score": 0.0,
+      "trade_quality_label": "NO TRADE",
+      "trend_strength_score": 20.0,
+      "trend_strength_label": "NO_TREND",
+      "volume_ratio": 1.09,
+      "volume_strength_score": 50.0,
+      "volume_strength_label": "NORMAL_VOLUME",
+      "volume_confirmed": false,
+      "nearest_support": 0.0,
+      "nearest_resistance": 0.0,
+      "distance_to_support_percent": 0.0,
+      "distance_to_resistance_percent": 0.0,
+      "support_resistance_score": 0.0,
+      "support_resistance_label": "NO_TRADE",
+      "breakout_confirmation_score": 0.0,
+      "stock_return_percent": -33.15,
+      "benchmark_return_percent": 29.65,
+      "relative_strength_percent": -62.8,
+      "relative_strength_score": 10.0,
+      "relative_strength_label": "STRONG_UNDERPERFORMANCE",
+      "stars": "\u2606\u2606\u2606\u2606\u2606",
+      "opportunity_score": 13.83
+    },
+    "decision": {
+      "symbol": "TEST",
+      "final_signal": "HOLD",
+      "confidence": 48.32,
+      "agreement": 39.39,
+      "market_regime": "STRONG_DOWNTREND",
+      "buy_score": 1.53,
+      "sell_score": 3.3,
+      "hold_score": 2.0,
+      "entry_price": 72.60000000000001,
+      "stop_loss": 72.60000000000001,
+      "take_profit": 72.60000000000001,
+      "risk_reward_ratio": 0.0,
+      "decision_reason": "Signal changed to HOLD because confidence 48.32% is below minimum threshold 55.0%.",
+      "position_size": {
+        "account_size": 10000,
+        "risk_percent": 1.0,
+        "risk_amount": 100.0,
+        "entry_price": 72.6,
+        "stop_loss": 72.6,
+        "risk_per_share": 0.0,
+        "quantity": 0,
+        "position_value": 0.0,
+        "max_loss": 0.0
+      }
+    },
+    "strategies": [
+      {
+        "signal": "SELL",
+        "reason": "EMA20 78.30, EMA50 87.29, RSI 0.00. Bearish EMA or weak RSI condition.",
+        "confidence": 0.75,
+        "strategy": "EMA_RSI_Strategy"
+      },
+      {
+        "signal": "SELL",
+        "reason": "MACD -4.20 is below signal line -4.20.",
+        "confidence": 0.7,
+        "strategy": "MACD_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 72.60 is between Bollinger Bands 71.20 and 85.40.",
+        "confidence": 0.5,
+        "strategy": "Bollinger_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 72.60 is within previous 20-day range 72.20 to 85.60.",
+        "confidence": 0.5,
+        "strategy": "Breakout_Strategy"
+      },
+      {
+        "signal": "BUY",
+        "reason": "Close 72.60 is above SuperTrend lower band 66.60, indicating bullish trend.",
+        "confidence": 0.75,
+        "strategy": "SuperTrend_Strategy"
+      },
+      {
+        "signal": "SELL",
+        "reason": "ADX 100.00 indicates a strong trend, and DI- 30.00 is above DI+ 0.00.",
+        "confidence": 0.75,
+        "strategy": "ADX_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Volume ratio 1.09 does not show a strong spike.",
+        "confidence": 0.5,
+        "strategy": "Volume_Spike_Strategy"
+      },
+      {
+        "signal": "SELL",
+        "reason": "Momentum is negative at -6.00.",
+        "confidence": 0.7,
+        "strategy": "Momentum_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "ATR 2.00 is not above average 2.00.",
+        "confidence": 0.5,
+        "strategy": "ATR_Strategy"
+      },
+      {
+        "signal": "BUY",
+        "reason": "Stochastic K 10.20 is oversold and above D 10.20.",
+        "confidence": 0.7,
+        "strategy": "Stochastic_Strategy"
+      }
+    ],
+    "weighted": [
+      {
+        "signal": "SELL",
+        "reason": "EMA20 78.30, EMA50 87.29, RSI 0.00. Bearish EMA or weak RSI condition.",
+        "confidence": 0.9,
+        "strategy": "EMA_RSI_Strategy",
+        "original_confidence": 0.75,
+        "weight": 1.2
+      },
+      {
+        "signal": "SELL",
+        "reason": "MACD -4.20 is below signal line -4.20.",
+        "confidence": 0.84,
+        "strategy": "MACD_Strategy",
+        "original_confidence": 0.7,
+        "weight": 1.2
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 72.60 is between Bollinger Bands 71.20 and 85.40.",
+        "confidence": 0.45,
+        "strategy": "Bollinger_Strategy",
+        "original_confidence": 0.5,
+        "weight": 0.9
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 72.60 is within previous 20-day range 72.20 to 85.60.",
+        "confidence": 0.55,
+        "strategy": "Breakout_Strategy",
+        "original_confidence": 0.5,
+        "weight": 1.1
+      },
+      {
+        "signal": "BUY",
+        "reason": "Close 72.60 is above SuperTrend lower band 66.60, indicating bullish trend.",
+        "confidence": 0.9,
+        "strategy": "SuperTrend_Strategy",
+        "original_confidence": 0.75,
+        "weight": 1.2
+      },
+      {
+        "signal": "SELL",
+        "reason": "ADX 100.00 indicates a strong trend, and DI- 30.00 is above DI+ 0.00.",
+        "confidence": 0.75,
+        "strategy": "ADX_Strategy",
+        "original_confidence": 0.75,
+        "weight": 1.0
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Volume ratio 1.09 does not show a strong spike.",
+        "confidence": 0.5,
+        "strategy": "Volume_Spike_Strategy",
+        "original_confidence": 0.5,
+        "weight": 1.0
+      },
+      {
+        "signal": "SELL",
+        "reason": "Momentum is negative at -6.00.",
+        "confidence": 0.805,
+        "strategy": "Momentum_Strategy",
+        "original_confidence": 0.7,
+        "weight": 1.15
+      },
+      {
+        "signal": "HOLD",
+        "reason": "ATR 2.00 is not above average 2.00.",
+        "confidence": 0.5,
+        "strategy": "ATR_Strategy",
+        "original_confidence": 0.5,
+        "weight": 1.0
+      },
+      {
+        "signal": "BUY",
+        "reason": "Stochastic K 10.20 is oversold and above D 10.20.",
+        "confidence": 0.63,
+        "strategy": "Stochastic_Strategy",
+        "original_confidence": 0.7,
+        "weight": 0.9
+      }
+    ],
+    "consensus": {
+      "buy_votes": 2,
+      "sell_votes": 4,
+      "hold_votes": 4,
+      "buy_score": 1.53,
+      "sell_score": 3.3,
+      "hold_score": 2.0,
+      "final_signal": "SELL"
+    }
+  },
+  "flat": {
+    "row": {
+      "symbol": "TEST",
+      "signal": "HOLD",
+      "confidence": 44.86,
+      "agreement": 2.55,
+      "market_regime": "SIDEWAYS_OR_WEAK_TREND",
+      "entry_price": 100.14144433447798,
+      "stop_loss": 100.14144433447798,
+      "take_profit": 100.14144433447798,
+      "risk_reward_ratio": 0.0,
+      "quantity": 0,
+      "position_value": 0.0,
+      "max_loss": 0.0,
+      "score": -149.57,
+      "profit_loss": -997.4748936678116,
+      "return_percent": -9.974748936678116,
+      "max_drawdown": -9.974748936678116,
+      "win_rate": 0.0,
+      "total_trades": 26,
+      "buy_votes": 4,
+      "sell_votes": 1,
+      "hold_votes": 5,
+      "buy_score": 2.75,
+      "sell_score": 0.7,
+      "hold_score": 2.68,
+      "decision_reason": "Signal changed to HOLD because confidence 44.86% is below minimum threshold 55.0%.",
+      "ema_rsi_signal": "BUY",
+      "macd_signal": "BUY",
+      "bollinger_signal": "HOLD",
+      "breakout_signal": "HOLD",
+      "supertrend_signal": "BUY",
+      "trade_quality_score": 0.0,
+      "trade_quality_label": "NO TRADE",
+      "trend_strength_score": 60.0,
+      "trend_strength_label": "MODERATE_TREND",
+      "volume_ratio": 1.09,
+      "volume_strength_score": 50.0,
+      "volume_strength_label": "NORMAL_VOLUME",
+      "volume_confirmed": false,
+      "nearest_support": 97.24,
+      "nearest_resistance": 102.77,
+      "distance_to_support_percent": 2.9,
+      "distance_to_resistance_percent": 2.63,
+      "support_resistance_score": 0.0,
+      "support_resistance_label": "NO_TRADE",
+      "breakout_confirmation_score": 0.0,
+      "stock_return_percent": 0.89,
+      "benchmark_return_percent": 29.65,
+      "relative_strength_percent": -28.76,
+      "relative_strength_score": 10.0,
+      "relative_strength_label": "STRONG_UNDERPERFORMANCE",
+      "stars": "\u2606\u2606\u2606\u2606\u2606",
+      "opportunity_score": 19.49
+    },
+    "decision": {
+      "symbol": "TEST",
+      "final_signal": "HOLD",
+      "confidence": 44.86,
+      "agreement": 2.55,
+      "market_regime": "SIDEWAYS_OR_WEAK_TREND",
+      "buy_score": 2.75,
+      "sell_score": 0.7,
+      "hold_score": 2.68,
+      "entry_price": 100.14144433447798,
+      "stop_loss": 100.14144433447798,
+      "take_profit": 100.14144433447798,
+      "risk_reward_ratio": 0.0,
+      "decision_reason": "Signal changed to HOLD because confidence 44.86% is below minimum threshold 55.0%.",
+      "position_size": {
+        "account_size": 10000,
+        "risk_percent": 1.0,
+        "risk_amount": 100.0,
+        "entry_price": 100.14,
+        "stop_loss": 100.14,
+        "risk_per_share": 0.0,
+        "quantity": 0,
+        "position_value": 0.0,
+        "max_loss": 0.0
+      }
+    },
+    "strategies": [
+      {
+        "signal": "BUY",
+        "reason": "EMA20 100.18 is above EMA50 100.07 and RSI 50.02 is above 50.",
+        "confidence": 0.75,
+        "strategy": "EMA_RSI_Strategy"
+      },
+      {
+        "signal": "BUY",
+        "reason": "MACD 0.15 is above signal line 0.04.",
+        "confidence": 0.7,
+        "strategy": "MACD_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 100.14 is between Bollinger Bands 97.19 and 102.84.",
+        "confidence": 0.5,
+        "strategy": "Bollinger_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 100.14 is within previous 20-day range 97.01 to 103.00.",
+        "confidence": 0.5,
+        "strategy": "Breakout_Strategy"
+      },
+      {
+        "signal": "BUY",
+        "reason": "Close 100.14 is above SuperTrend lower band 92.82, indicating bullish trend.",
+        "confidence": 0.75,
+        "strategy": "SuperTrend_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "ADX 7.37 does not show a strong directional trend.",
+        "confidence": 0.5,
+        "strategy": "ADX_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Volume ratio 1.09 does not show a strong spike.",
+        "confidence": 0.5,
+        "strategy": "Volume_Spike_Strategy"
+      },
+      {
+        "signal": "BUY",
+        "reason": "Momentum is positive at 1.35.",
+        "confidence": 0.7,
+        "strategy": "Momentum_Strategy"
+      },
+      {
+        "signal": "SELL",
+        "reason": "ATR 2.40 is above average 2.39, and price is below EMA20.",
+        "confidence": 0.7,
+        "strategy": "ATR_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Stochastic K 52.72, D 70.44 shows no clear reversal.",
+        "confidence": 0.5,
+        "strategy": "Stochastic_Strategy"
+      }
+    ],
+    "weighted": [
+      {
+        "signal": "BUY",
+        "reason": "EMA20 100.18 is above EMA50 100.07 and RSI 50.02 is above 50.",
+        "confidence": 0.75,
+        "strategy": "EMA_RSI_Strategy",
+        "original_confidence": 0.75,
+        "weight": 1.0
+      },
+      {
+        "signal": "BUY",
+        "reason": "MACD 0.15 is above signal line 0.04.",
+        "confidence": 0.7,
+        "strategy": "MACD_Strategy",
+        "original_confidence": 0.7,
+        "weight": 1.0
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 100.14 is between Bollinger Bands 97.19 and 102.84.",
+        "confidence": 0.6,
+        "strategy": "Bollinger_Strategy",
+        "original_confidence": 0.5,
+        "weight": 1.2
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 100.14 is within previous 20-day range 97.01 to 103.00.",
+        "confidence": 0.425,
+        "strategy": "Breakout_Strategy",
+        "original_confidence": 0.5,
+        "weight": 0.85
+      },
+      {
+        "signal": "BUY",
+        "reason": "Close 100.14 is above SuperTrend lower band 92.82, indicating bullish trend.",
+        "confidence": 0.675,
+        "strategy": "SuperTrend_Strategy",
+        "original_confidence": 0.75,
+        "weight": 0.9
+      },
+      {
+        "signal": "HOLD",
+        "reason": "ADX 7.37 does not show a strong directional trend.",
+        "confidence": 0.5,
+        "strategy": "ADX_Strategy",
+        "original_confidence": 0.5,
+        "weight": 1.0
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Volume ratio 1.09 does not show a strong spike.",
+        "confidence": 0.55,
+        "strategy": "Volume_Spike_Strategy",
+        "original_confidence": 0.5,
+        "weight": 1.1
+      },
+      {
+        "signal": "BUY",
+        "reason": "Momentum is positive at 1.35.",
+        "confidence": 0.63,
+        "strategy": "Momentum_Strategy",
+        "original_confidence": 0.7,
+        "weight": 0.9
+      },
+      {
+        "signal": "SELL",
+        "reason": "ATR 2.40 is above average 2.39, and price is below EMA20.",
+        "confidence": 0.7,
+        "strategy": "ATR_Strategy",
+        "original_confidence": 0.7,
+        "weight": 1.0
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Stochastic K 52.72, D 70.44 shows no clear reversal.",
+        "confidence": 0.6,
+        "strategy": "Stochastic_Strategy",
+        "original_confidence": 0.5,
+        "weight": 1.2
+      }
+    ],
+    "consensus": {
+      "buy_votes": 4,
+      "sell_votes": 1,
+      "hold_votes": 5,
+      "buy_score": 2.75,
+      "sell_score": 0.7,
+      "hold_score": 2.68,
+      "final_signal": "BUY"
+    }
+  },
+  "reversal": {
+    "row": {
+      "symbol": "TEST",
+      "signal": "SELL",
+      "confidence": 67.97,
+      "agreement": 71.31,
+      "market_regime": "STRONG_DOWNTREND",
+      "entry_price": 56.0,
+      "stop_loss": 57.120000000000005,
+      "take_profit": 53.76,
+      "risk_reward_ratio": 2.0,
+      "quantity": 89,
+      "position_value": 4984.0,
+      "max_loss": 99.68,
+      "score": -10.0,
+      "profit_loss": 0,
+      "return_percent": 0.0,
+      "max_drawdown": 0.0,
+      "win_rate": 0.0,
+      "total_trades": 0,
+      "buy_votes": 1,
+      "sell_votes": 6,
+      "hold_votes": 3,
+      "buy_score": 0.9,
+      "sell_score": 4.88,
+      "hold_score": 1.4,
+      "decision_reason": "Final signal is SELL. BUY Score=0.9, SELL Score=4.88, HOLD Score=1.4.",
+      "ema_rsi_signal": "SELL",
+      "macd_signal": "SELL",
+      "bollinger_signal": "HOLD",
+      "breakout_signal": "SELL",
+      "supertrend_signal": "BUY",
+      "trade_quality_score": 58.25,
+      "trade_quality_label": "MODERATE",
+      "trend_strength_score": 20.0,
+      "trend_strength_label": "NO_TREND",
+      "volume_ratio": 1.09,
+      "volume_strength_score": 50.0,
+      "volume_strength_label": "NORMAL_VOLUME",
+      "volume_confirmed": false,
+      "nearest_support": 0.0,
+      "nearest_resistance": 135.0,
+      "distance_to_support_percent": 0.0,
+      "distance_to_resistance_percent": 141.07,
+      "support_resistance_score": 85.0,
+      "support_resistance_label": "OPEN_SPACE",
+      "breakout_confirmation_score": 85.0,
+      "stock_return_percent": -53.87,
+      "benchmark_return_percent": 29.65,
+      "relative_strength_percent": -83.53,
+      "relative_strength_score": 10.0,
+      "relative_strength_label": "STRONG_UNDERPERFORMANCE",
+      "stars": "\u2605\u2605\u2605\u2606\u2606",
+      "opportunity_score": 42.86
+    },
+    "decision": {
+      "symbol": "TEST",
+      "final_signal": "SELL",
+      "confidence": 67.97,
+      "agreement": 71.31,
+      "market_regime": "STRONG_DOWNTREND",
+      "buy_score": 0.9,
+      "sell_score": 4.88,
+      "hold_score": 1.4,
+      "entry_price": 56.0,
+      "stop_loss": 57.120000000000005,
+      "take_profit": 53.76,
+      "risk_reward_ratio": 2.0,
+      "decision_reason": "Final signal is SELL. BUY Score=0.9, SELL Score=4.88, HOLD Score=1.4.",
+      "position_size": {
+        "account_size": 10000,
+        "risk_percent": 1.0,
+        "risk_amount": 100.0,
+        "entry_price": 56.0,
+        "stop_loss": 57.12,
+        "risk_per_share": 1.12,
+        "quantity": 89,
+        "position_value": 4984.0,
+        "max_loss": 99.68
+      }
+    },
+    "strategies": [
+      {
+        "signal": "SELL",
+        "reason": "EMA20 74.50, EMA50 91.63, RSI 1.73. Bearish EMA or weak RSI condition.",
+        "confidence": 0.75,
+        "strategy": "EMA_RSI_Strategy"
+      },
+      {
+        "signal": "SELL",
+        "reason": "MACD -12.41 is below signal line -11.70.",
+        "confidence": 0.7,
+        "strategy": "MACD_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 56.00 is between Bollinger Bands 51.34 and 98.66.",
+        "confidence": 0.5,
+        "strategy": "Bollinger_Strategy"
+      },
+      {
+        "signal": "SELL",
+        "reason": "Close 56.00 broke below previous 20-day low 57.00.",
+        "confidence": 0.8,
+        "strategy": "Breakout_Strategy"
+      },
+      {
+        "signal": "BUY",
+        "reason": "Close 56.00 is above SuperTrend lower band 47.00, indicating bullish trend.",
+        "confidence": 0.75,
+        "strategy": "SuperTrend_Strategy"
+      },
+      {
+        "signal": "SELL",
+        "reason": "ADX 88.11 indicates a strong trend, and DI- 64.15 is above DI+ 1.13.",
+        "confidence": 0.75,
+        "strategy": "ADX_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Volume ratio 1.09 does not show a strong spike.",
+        "confidence": 0.5,
+        "strategy": "Volume_Spike_Strategy"
+      },
+      {
+        "signal": "SELL",
+        "reason": "Momentum is negative at -20.00.",
+        "confidence": 0.7,
+        "strategy": "Momentum_Strategy"
+      },
+      {
+        "signal": "SELL",
+        "reason": "ATR 2.94 is above average 2.88, and price is below EMA20.",
+        "confidence": 0.7,
+        "strategy": "ATR_Strategy"
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Stochastic K 3.57, D 3.57 shows no clear reversal.",
+        "confidence": 0.5,
+        "strategy": "Stochastic_Strategy"
+      }
+    ],
+    "weighted": [
+      {
+        "signal": "SELL",
+        "reason": "EMA20 74.50, EMA50 91.63, RSI 1.73. Bearish EMA or weak RSI condition.",
+        "confidence": 0.9,
+        "strategy": "EMA_RSI_Strategy",
+        "original_confidence": 0.75,
+        "weight": 1.2
+      },
+      {
+        "signal": "SELL",
+        "reason": "MACD -12.41 is below signal line -11.70.",
+        "confidence": 0.84,
+        "strategy": "MACD_Strategy",
+        "original_confidence": 0.7,
+        "weight": 1.2
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Close 56.00 is between Bollinger Bands 51.34 and 98.66.",
+        "confidence": 0.45,
+        "strategy": "Bollinger_Strategy",
+        "original_confidence": 0.5,
+        "weight": 0.9
+      },
+      {
+        "signal": "SELL",
+        "reason": "Close 56.00 broke below previous 20-day low 57.00.",
+        "confidence": 0.88,
+        "strategy": "Breakout_Strategy",
+        "original_confidence": 0.8,
+        "weight": 1.1
+      },
+      {
+        "signal": "BUY",
+        "reason": "Close 56.00 is above SuperTrend lower band 47.00, indicating bullish trend.",
+        "confidence": 0.9,
+        "strategy": "SuperTrend_Strategy",
+        "original_confidence": 0.75,
+        "weight": 1.2
+      },
+      {
+        "signal": "SELL",
+        "reason": "ADX 88.11 indicates a strong trend, and DI- 64.15 is above DI+ 1.13.",
+        "confidence": 0.75,
+        "strategy": "ADX_Strategy",
+        "original_confidence": 0.75,
+        "weight": 1.0
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Volume ratio 1.09 does not show a strong spike.",
+        "confidence": 0.5,
+        "strategy": "Volume_Spike_Strategy",
+        "original_confidence": 0.5,
+        "weight": 1.0
+      },
+      {
+        "signal": "SELL",
+        "reason": "Momentum is negative at -20.00.",
+        "confidence": 0.805,
+        "strategy": "Momentum_Strategy",
+        "original_confidence": 0.7,
+        "weight": 1.15
+      },
+      {
+        "signal": "SELL",
+        "reason": "ATR 2.94 is above average 2.88, and price is below EMA20.",
+        "confidence": 0.7,
+        "strategy": "ATR_Strategy",
+        "original_confidence": 0.7,
+        "weight": 1.0
+      },
+      {
+        "signal": "HOLD",
+        "reason": "Stochastic K 3.57, D 3.57 shows no clear reversal.",
+        "confidence": 0.45,
+        "strategy": "Stochastic_Strategy",
+        "original_confidence": 0.5,
+        "weight": 0.9
+      }
+    ],
+    "consensus": {
+      "buy_votes": 1,
+      "sell_votes": 6,
+      "hold_votes": 3,
+      "buy_score": 0.9,
+      "sell_score": 4.88,
+      "hold_score": 1.4,
+      "final_signal": "SELL"
+    }
+  }
+}

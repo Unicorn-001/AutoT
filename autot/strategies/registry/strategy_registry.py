@@ -18,45 +18,75 @@ from autot.strategies.momentum_strategy_class import MomentumStrategy
 from autot.strategies.atr_strategy_class import AtrStrategy
 from autot.strategies.stochastic_strategy_class import StochasticStrategy
 
+from dataclasses import dataclass
+from autot.settings.models import Strategies
+
+
+@dataclass(frozen=True)
+class StrategyMetadata:
+    strategy_id: str
+    display_name: str
+    implementation: type
+    description: str
+    version: str = '1'
+
+    @property
+    def default_parameters(self):
+        return getattr(Strategies(), self.strategy_id)
+
+    @property
+    def parameter_schema(self):
+        return type(self.default_parameters).model_json_schema()
+
+    @property
+    def advanced_parameters(self):
+        return tuple(k for k in type(self.default_parameters).model_fields
+                     if k not in ('enabled', 'weight', 'regime_weights'))
+
+    def configured(self, settings):
+        config = getattr(settings, self.strategy_id)
+        return dict(strategy_id=self.strategy_id, display_name=self.display_name,
+                    enabled=config.enabled, weight=config.weight,
+                    regime_weights=config.regime_weights.model_dump(),
+                    parameter_schema=self.parameter_schema,
+                    default_parameters=self.default_parameters.model_dump(),
+                    advanced_parameters=self.advanced_parameters,
+                    description=self.description, version=self.version)
+
+
+REGISTRY = (
+    StrategyMetadata('EMA_RSI', 'EMA + RSI', EmaRsiStrategy, 'EMA trend and RSI thresholds.'),
+    StrategyMetadata('MACD', 'MACD', MacdStrategy, 'MACD versus signal line.'),
+    StrategyMetadata('BOLLINGER', 'Bollinger Bands', BollingerStrategy, 'Price at outer bands.'),
+    StrategyMetadata('BREAKOUT', 'Breakout', BreakoutStrategy, 'Close beyond previous high or low.'),
+    StrategyMetadata('SUPERTREND', 'Supertrend', SuperTrendStrategy, 'Existing rolling ATR band condition.'),
+    StrategyMetadata('ADX', 'ADX', AdxStrategy, 'Directional movement in a strong trend.'),
+    StrategyMetadata('VOLUME_SPIKE', 'Volume Spike', VolumeSpikeStrategy, 'Volume ratio and EMA trend.'),
+    StrategyMetadata('MOMENTUM', 'Momentum', MomentumStrategy, 'Sign of price momentum.'),
+    StrategyMetadata('ATR', 'ATR', AtrStrategy, 'ATR above its moving average and EMA trend.'),
+    StrategyMetadata('STOCHASTIC', 'Stochastic', StochasticStrategy, 'Oversold/overbought reversals.'),
+)
+
 
 class StrategyRegistry:
-    """
-    Registry of trading strategies.
-    """
-
-    def __init__(self) -> None:
+    def __init__(self, settings=None):
+        configured = settings is not None
+        settings = settings or Strategies()
         self._strategies = []
-
-        if ENABLED_STRATEGIES.get("EMA_RSI", False):
-            self._strategies.append(EmaRsiStrategy())
-
-        if ENABLED_STRATEGIES.get("MACD", False):
-            self._strategies.append(MacdStrategy())
-        if ENABLED_STRATEGIES.get("BOLLINGER", False):
-            self._strategies.append(BollingerStrategy())
-        if ENABLED_STRATEGIES.get("BREAKOUT", False):
-            self._strategies.append(BreakoutStrategy())
-        if ENABLED_STRATEGIES.get("SUPERTREND", False):
-            self._strategies.append(SuperTrendStrategy())
-        if ENABLED_STRATEGIES.get("ADX", False):
-            self._strategies.append(AdxStrategy())
-        if ENABLED_STRATEGIES.get("VOLUME_SPIKE", False):
-            self._strategies.append(VolumeSpikeStrategy())
-        if ENABLED_STRATEGIES.get("MOMENTUM", False):
-            self._strategies.append(MomentumStrategy())
-        if ENABLED_STRATEGIES.get("ATR", False):
-            self._strategies.append(AtrStrategy())
-        if ENABLED_STRATEGIES.get("STOCHASTIC", False):
-            self._strategies.append(StochasticStrategy())
+        for item in REGISTRY:
+            config = getattr(settings, item.strategy_id)
+            enabled = config.enabled if configured else ENABLED_STRATEGIES.get(item.strategy_id, False)
+            if enabled:
+                if item.strategy_id == 'BREAKOUT':
+                    strategy = item.implementation(lookback_period=config.lookback)
+                elif item.strategy_id in ('EMA_RSI', 'ADX', 'VOLUME_SPIKE', 'ATR', 'STOCHASTIC'):
+                    strategy = item.implementation(parameters=config)
+                else:
+                    strategy = item.implementation()
+                self._strategies.append(strategy)
 
     def get_all(self):
-        """
-        Return all registered strategies.
-        """
         return self._strategies
 
     def get_names(self):
-        """
-        Return strategy names.
-        """
         return [strategy.get_name() for strategy in self._strategies]

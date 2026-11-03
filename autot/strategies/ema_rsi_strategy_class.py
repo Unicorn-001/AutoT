@@ -16,6 +16,10 @@ class EmaRsiStrategy(StrategyInterface):
     EMA + RSI trading strategy.
     """
 
+    def __init__(self, parameters=None):
+        from autot.settings.models import EmaRsi
+        self.parameters = parameters or EmaRsi()
+
     def generate_signal(self, data: pd.DataFrame) -> dict:
         if data.empty:
             return {
@@ -58,21 +62,21 @@ class EmaRsiStrategy(StrategyInterface):
                 "confidence": 0.0,
             }
 
-        if ema_20 > ema_50 and rsi > 50:
+        if ema_20 > ema_50 and rsi > self.parameters.buy_threshold:
             return {
                 "signal": "BUY",
                 "reason": (
-                    f"EMA20 {ema_20:.2f} is above EMA50 {ema_50:.2f} "
-                    f"and RSI {rsi:.2f} is above 50."
+                    f"EMA{self.parameters.fast} {ema_20:.2f} is above EMA{self.parameters.slow} {ema_50:.2f} "
+                    f"and RSI {rsi:.2f} is above {self.parameters.buy_threshold:g}."
                 ),
                 "confidence": 0.75,
             }
 
-        if ema_20 < ema_50 or rsi < 45:
+        if ema_20 < ema_50 or rsi < self.parameters.sell_threshold:
             return {
                 "signal": "SELL",
                 "reason": (
-                    f"EMA20 {ema_20:.2f}, EMA50 {ema_50:.2f}, "
+                    f"EMA{self.parameters.fast} {ema_20:.2f}, EMA{self.parameters.slow} {ema_50:.2f}, "
                     f"RSI {rsi:.2f}. Bearish EMA or weak RSI condition."
                 ),
                 "confidence": 0.75,
@@ -81,7 +85,7 @@ class EmaRsiStrategy(StrategyInterface):
         return {
             "signal": "HOLD",
             "reason": (
-                f"EMA20 {ema_20:.2f}, EMA50 {ema_50:.2f}, "
+                f"EMA{self.parameters.fast} {ema_20:.2f}, EMA{self.parameters.slow} {ema_50:.2f}, "
                 f"RSI {rsi:.2f}. No clear EMA/RSI signal."
             ),
             "confidence": 0.5,

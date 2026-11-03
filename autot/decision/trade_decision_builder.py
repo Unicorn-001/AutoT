@@ -15,7 +15,6 @@ from autot.config.trading_settings import (
     ACCOUNT_SIZE,
     DEFAULT_STOP_LOSS_PERCENT,
     DEFAULT_TAKE_PROFIT_PERCENT,
-    RISK_PER_TRADE,
 )
 from autot.decision_engine.decision_engine import DecisionEngine
 from autot.market_regime.market_regime_detector import MarketRegimeDetector
@@ -28,8 +27,11 @@ class TradeDecisionBuilder:
         symbol: str,
         data: pd.DataFrame,
         consensus: dict,
+        settings=None,
     ) -> TradeDecision:
 
+        from autot.settings.models import AutoTSettings
+        settings = settings or AutoTSettings()
         latest = data.iloc[-1]
 
         entry_price = float(
@@ -37,7 +39,7 @@ class TradeDecisionBuilder:
         )
 
         # Determine final trading signal first
-        decision = DecisionEngine.decide(consensus)
+        decision = DecisionEngine.decide(consensus, settings.consensus)
 
         final_signal = decision["final_signal"]
         decision_reason = decision["decision_reason"]
@@ -92,7 +94,7 @@ class TradeDecisionBuilder:
 
         position_size = PositionSizeCalculator.calculate(
             account_size=ACCOUNT_SIZE,
-            risk_percent=RISK_PER_TRADE,
+            risk_percent=settings.risk.risk_per_trade_percent,
             entry_price=entry_price,
             stop_loss=stop_loss,
         )
