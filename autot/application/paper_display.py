@@ -17,6 +17,7 @@ from autot.paper_trade.sessions import MARKETS
 from autot.utils.financial_validation import decimal_value as D
 from autot.settings.models import SettingsState
 from autot.settings.store import SettingsStore
+from autot.portfolio_risk.models import PortfolioRiskRejected
 
 
 LOGGER = logging.getLogger(__name__)
@@ -98,7 +99,8 @@ def render_review():
             risk = st.number_input("Risk %", min_value=0.01, max_value=100.0, value=risk_config.risk_per_trade_percent, disabled=settings_state is not None, key=f"paper_risk_{active.profile.configuration_hash}" if settings_state else "paper_risk")
             acknowledged = st.checkbox("I verified the quote unit and understand this is simulated trading.")
             preview = st.form_submit_button("Calculate quantity")
-            confirmed = st.form_submit_button("Confirm Paper Trade")
+            confirmed = st.form_submit_button("Confirm Paper Trade",
+                disabled=st.session_state.get("paper_rejected_draft") == draft["key"])
         scale = quote_scale(market, unit)
         sizing = size_position(capital, risk, D(row["entry_price"]) * scale, D(row["stop_loss"]) * scale)
         st.write(f"Quantity: {sizing.quantity} · Estimated value: {sizing.position_value} {currency} · "
@@ -106,8 +108,18 @@ def render_review():
         st.caption("Whole shares; sizing uses the reference price. The actual fill may change notional and risk. Shorts reserve full notional; no leverage or borrow model.")
         # A preview ties the acknowledgement to the exact submitted sizing inputs.
         parameters = (capital, risk, unit)
+        admission_context = dict(market=market, index_name=metadata.get("index_name") or "Custom upload",
+                                 signal_time=context["signal_time"], timeframe="1d", quote_currency=unit,
+                                 capital=capital, risk_percent=risk, metadata=metadata, settings_state=settings_state)
         if preview:
             st.session_state["paper_preview"] = (draft["key"], parameters)
+        if preview or (not confirmed and st.session_state.get("paper_preview") == (draft["key"], parameters)):
+            result = service.preview_admission(row, **admission_context)
+            rejected_key = None if result.allowed else draft['key']
+            if st.session_state.get('paper_rejected_draft') != rejected_key:
+                st.session_state['paper_rejected_draft'] = rejected_key
+                st.rerun()
+            render_admission_decision(result)
         if confirmed:
             if risk_config.manual_confirmation_required and not acknowledged:
                 st.error("Verify the quote unit and acknowledge simulated execution first.")
@@ -115,14 +127,14 @@ def render_review():
                 st.error("Calculate quantity with these inputs before confirming.")
             else:
                 trade = service.confirm(
-                    draft["key"], row, create_another=draft.get("create_another", False), market=market, index_name=metadata.get("index_name") or "Custom upload",
-                    signal_time=context["signal_time"], timeframe="1d", quote_currency=unit,
-                    capital=capital, risk_percent=risk, metadata=metadata, settings_state=settings_state,
+                    draft["key"], row, create_another=draft.get("create_another", False), **admission_context,
                 )
                 st.success(f"Paper trade {trade['trade_id']} · Status: {trade['status'].replace('_', ' ')}")
         if st.button("Discard review", key="paper_discard"):
             del st.session_state["paper_draft"]
             st.rerun()
+    except PortfolioRiskRejected as error:
+        render_admission_decision(error.result, final=True)
     except ValueError as error:
         st.error(str(error))
     except Exception:
@@ -206,6 +218,72 @@ def render_accounts(summaries):
     st.caption("Available = capital + realized P&L − reserved notional. Unrealized P&L is shown separately. No FX or mixed-currency total.")
 
 
+def render_admission_decision(result, *, final=False):
+    st.subheader(f"Portfolio Risk · {result.decision}")
+    for reason in result.reasons:
+        (st.success if result.allowed else st.error)(reason)
+    for warning in result.warnings:
+        st.warning(warning)
+    currency = result.currency
+    st.write(f"Proposed position: {format_money(result.proposed_position_value, currency)} "
+             f"({result.proposed_position_percent:.2f}% of base capital) · "
+             f"Planned trade risk: {format_money(result.proposed_trade_risk, currency)} "
+             f"({result.proposed_trade_risk_percent:.2f}%)")
+    st.write(f"Account capital / equity: {format_money(result.account_capital, currency)} / "
+             f"{format_money(result.account_equity, currency)} · "
+             f"Position slots used: {result.current_open_positions} · Trades today: {result.new_trades_today}")
+    st.write(f"Available capital: {format_money(result.available_capital, currency)} · "
+             f"Post-trade reserved: {format_money(result.post_trade_reserved_notional, currency)} · "
+             f"Post-trade planned risk: {format_money(result.proposed_total_open_risk, currency)}")
+    st.caption('Confirmation rejected; no trade or reservation was created.' if final else
+               'Advisory preview for a new exposure. Confirmation checks the current portfolio again; this preview reserves no capital.')
+    with st.expander('Portfolio admission details'):
+        st.json(result.model_dump(mode='json'))
+
+
+def render_portfolio_exposure(service):
+    store = SettingsStore()
+    state = store.load()
+    if store.warning:
+        st.warning(store.warning)
+        return
+    views = service.ledger.portfolio_exposures(state, when=service.clock())
+    if not views:
+        return
+    st.subheader('Portfolio Risk / Exposure')
+    st.caption(f'Limits shown for active profile {state.profile.profile_name} v{state.profile.profile_version} · '
+               f'{state.settings.general.mode}. Delayed scan confirmations use their captured profile.')
+    st.caption('Reservations, position slots and planned risk are shared across modes within each currency. '
+               'Percentage limits use account base capital. Equity below is capital + realized P&L; unrealized P&L is separate.')
+    for view in views:
+        currency, risk = view.currency, view.risk_settings
+        st.markdown(f'**{currency} PORTFOLIO RISK**')
+        metrics = [
+            ('Account equity', format_money(view.account_equity, currency)),
+            ('Available capital', format_money(view.available_capital, currency)),
+            ('Reserved notional', format_money(view.existing_reserved_notional, currency)),
+            ('Pending / Open', f'{view.pending_positions} / {view.open_positions}'),
+            ('Planned portfolio risk', format_money(view.current_open_risk, currency)),
+            ('Portfolio risk % (base capital)', f'{view.current_open_risk_percent:.2f}%'),
+            ('Configured portfolio risk max', f'{risk.maximum_total_portfolio_risk_percent:g}% / '
+             f'{format_money(view.maximum_total_portfolio_risk, currency)}' + ('' if risk.enforce_portfolio_risk_limit else ' (not enforced)')),
+            ('Fill-adjusted stop risk', format_money(view.fill_adjusted_open_risk, currency)),
+            ('Largest position', format_money(view.largest_position, currency)),
+            ('Largest position % (base capital)', f'{view.largest_position_percent:.2f}%'),
+            ('Remaining position slots', str(view.remaining_position_slots) if risk.enforce_positions_limit else 'Not enforced'),
+            ('Position limit', str(view.maximum_positions) + ('' if risk.enforce_positions_limit else ' (not enforced)')),
+            ('New trades today', str(view.new_trades_today)),
+            ('Daily trade limit', str(view.maximum_new_trades_per_day) + ('' if risk.enforce_daily_trade_limit else ' (not enforced)')),
+        ]
+        for start in range(0, len(metrics), 4):
+            for column, (label, value) in zip(st.columns(4), metrics[start:start+4]):
+                column.metric(label, value)
+        st.caption(f'Daily count: {view.mode} · {view.local_date} · {view.market_timezone}; '
+                   'includes cancelled confirmations. Pending entries consume position slots and reserve full notional.')
+        for warning in view.warnings:
+            st.warning(warning)
+
+
 def render_trade_counts(trades, summaries):
     st.subheader("Paper Trade Summary")
     st.write(" · ".join(f"{label}: {sum(t['status'] == status for t in trades)}" for status, label in
@@ -248,6 +326,7 @@ def render_paper_dashboard():
         summaries = service.ledger.summaries()
         if summaries:
             render_accounts(summaries)
+        render_portfolio_exposure(service)
         trades = service.ledger.all()
         render_trade_counts(trades, summaries)
         for status, title in [("OPEN", "Open Positions"), ("CLOSED", "Closed Trades"),
@@ -276,6 +355,13 @@ def render_paper_dashboard():
                         elif st.button("Request Manual Close", key=f"close_{trade['trade_id']}"):
                             service.request_manual_close(trade["trade_id"])
                             st.rerun()
+        with st.expander('Rejected paper confirmations'):
+            st.caption('Latest 100 rejected confirmation attempts; previews are not recorded. No trades or performance results are created.')
+            for rejected in service.ledger.rejections():
+                st.write(f'{rejected.recorded_at} · {rejected.proposal.symbol} · '
+                         f'{rejected.decision.currency} · {rejected.decision.mode}')
+                st.write(' '.join(rejected.decision.reasons))
+                st.json(rejected.model_dump(mode='json'))
         render_performance_journal(service.ledger)
     except ValueError as error:
         st.error(str(error))

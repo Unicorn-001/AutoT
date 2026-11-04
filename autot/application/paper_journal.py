@@ -22,7 +22,15 @@ def duration(seconds):
 def journal_row(entry):
     from autot.application.paper_display import format_money, format_price, format_timestamp
     t = entry['trade']
-    return {'Symbol': t['symbol'], 'Side': t['side'], 'Currency': t['currency'],
+    admission = t.get('portfolio_risk_decision')
+    planned = {
+        'Admission': 'ALLOW' if admission else 'PRE_PORTFOLIO_RISK',
+        'Planned position %': admission['proposed_position_percent'] if admission else '—',
+        'Planned trade risk %': admission['proposed_trade_risk_percent'] if admission else '—',
+        'Portfolio risk after admission': admission['proposed_total_open_risk'] if admission else '—',
+        'Positions after admission': admission['current_open_positions'] + 1 if admission else '—',
+    }
+    return {**planned, 'Symbol': t['symbol'], 'Side': t['side'], 'Currency': t['currency'],
             'Signal Time': format_timestamp(t['signal_time']), 'Signal Price': format_price(t['signal_price']),
             'Fill Price': format_price(t['fill_price']), 'Exit Price': format_price(t['exit_price']),
             'Outcome': entry['outcome'],

@@ -452,9 +452,11 @@ labeled `PRE_SETTINGS_BASELINE` only when read; no detailed history is fabricate
 and their IDs, balances, P&L and audit events are unchanged.
 
 USD/GBP/INR settings capital is a default for **new accounts only**. Existing account
-capital is read from the ledger and never reset by Settings. New position/count/
-portfolio-risk/daily-creation limits are opt-in and checked atomically at creation,
-including pending reservations across both modes within each currency account.
+capital is read from the ledger and never reset by Settings. Position/count/
+portfolio-risk/daily-creation limits are opt-in and checked atomically at creation.
+Reservations, position count and planned risk include pending exposures across
+both modes within each currency account. Portfolio Risk V1 daily counts are per
+mode and market-local date, including cancelled confirmations.
 Gap fills retain the existing strict available-capital check and execution rules.
 
 `RESEARCH` has separate signal identity and performance reporting, while sharing
@@ -469,3 +471,27 @@ inspect the raw trade snapshot to verify `configuration_source`, `settings_versi
 `strategy_config_hash`, `mode`, `trading_settings` and `execution_risk_percent`.
 News and Monitoring settings are placeholders only; updates still require the
 existing manual action. No scheduler or new execution semantics are enabled.
+
+
+## Portfolio Risk Engine V1
+
+See [PORTFOLIO_RISK.md](PORTFOLIO_RISK.md). Calculate quantity now shows a typed
+ALLOW/REJECT admission preview with explicit reasons and portfolio totals. It does
+not reserve funds. Confirm Paper Trade repeats the evaluation inside the serialized
+ledger transaction and rejects without creating an account, trade, trade event or
+reservation when any enforced limit fails. Accepted Settings-based trades retain
+the decision and configuration metadata in their immutable signal snapshot.
+Rejected confirmations append a separate durable risk audit, reviewable under
+Rejected paper confirmations. A rejected preview disables Confirm Paper Trade.
+Journal rows include planned admission metrics; legacy rows are labeled
+PRE_PORTFOLIO_RISK at read time.
+
+Paper Trading shows per-currency Portfolio Risk / Exposure alongside the existing
+accounts and positions: realized equity, available funds, reserved notional,
+pending/open counts, planned risk, configured risk ceiling, fill-adjusted stop risk,
+largest position, remaining slots, and the active mode's daily admission count.
+Limits marked “not enforced” do not restrict admission. Percentage limits retain
+the existing base-capital basis; displayed equity includes realized P&L only.
+Exposure across research and forward positions remains shared; performance views
+retain their existing mode separation. Neither previews nor this view updates
+prices, executes trades, or rewrites historical records.

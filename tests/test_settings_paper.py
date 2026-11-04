@@ -101,7 +101,7 @@ def test_new_capital_defaults_never_change_existing_accounts(environment):
     ({'enforce_position_limit': True, 'maximum_position_percent': 10}, 'BUY', 'position percent'),
     ({'enforce_portfolio_risk_limit': True, 'maximum_total_portfolio_risk_percent': 1}, 'BUY', 'portfolio risk'),
     ({'enforce_positions_limit': True, 'maximum_simultaneous_positions': 1}, 'BUY', 'simultaneous'),
-    ({'enforce_daily_trade_limit': True, 'maximum_new_trades_per_day': 1}, 'BUY', 'UTC day'),
+    ({'enforce_daily_trade_limit': True, 'maximum_new_trades_per_day': 1}, 'BUY', 'market-local day'),
 ])
 def test_opt_in_limits_transactional_rejection(environment, risk, side, message):
     store, service, _, _ = environment

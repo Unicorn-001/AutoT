@@ -10,6 +10,7 @@ import json
 import logging
 from pathlib import Path
 import sqlite3
+import time
 from uuid import uuid4
 
 from autot.paper_trade.sessions import utc
@@ -40,7 +41,17 @@ class Ledger:
         self.path = Path(path) if path else data_dir() / "paper_trading" / "ledger.sqlite3"
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connection() as db:
-            db.execute("PRAGMA journal_mode=WAL")
+            # Concurrent first opens can race on the journal-mode upgrade;
+            # SQLite does not consistently apply busy_timeout to this PRAGMA.
+            deadline = time.monotonic() + 10
+            while True:
+                try:
+                    db.execute("PRAGMA journal_mode=WAL")
+                    break
+                except sqlite3.OperationalError as error:
+                    if 'locked' not in str(error).lower() or time.monotonic() >= deadline:
+                        raise
+                    time.sleep(.01)
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS accounts (
                     currency TEXT PRIMARY KEY, capital TEXT NOT NULL);
@@ -68,6 +79,10 @@ class Ledger:
             db.execute("CREATE UNIQUE INDEX IF NOT EXISTS trade_intent_unique "
                        "ON trades(opportunity_id, intent_key)")
             audit.initialize(db, self.decode)
+            db.execute("""CREATE TABLE IF NOT EXISTS paper_trade_rejections (
+                decision_id TEXT PRIMARY KEY, recorded_at TEXT NOT NULL,
+                confirmation_key TEXT NOT NULL, proposal_json TEXT NOT NULL,
+                decision_json TEXT NOT NULL)""")
 
     @contextmanager
     def connection(self):
@@ -139,13 +154,71 @@ class Ledger:
         with self.connection() as db:
             return self._summaries(db)
 
+    def preview_admission(self, snapshot):
+        """Advisory read only. Confirmation always checks again under the write lock."""
+        from autot.portfolio_risk.engine import evaluate_admission
+        with self.connection() as db:
+            db.execute('BEGIN')
+            summary = self._summaries(db).get(snapshot['currency'])
+            if summary is None:
+                summary = dict(currency=snapshot['currency'], capital=D(snapshot['account_capital']),
+                               realized_pnl=D(0), unrealized_pnl=D(0), reserved=D(0),
+                               available=D(snapshot['account_capital']))
+            trades = [self.decode(r) for r in db.execute('SELECT * FROM trades')]
+            return evaluate_admission(snapshot, trades, summary)
+
+    def portfolio_exposures(self, settings_state, *, when):
+        """Consistent read of all currency accounts; no account creation or updates."""
+        from autot.portfolio_risk.engine import portfolio_exposure
+        from autot.paper_trade.sessions import MARKETS
+        from autot.settings.models import SettingsState, TradeSettingsSnapshot
+        state = SettingsState.model_validate(settings_state.model_dump(mode='json'))
+        config = TradeSettingsSnapshot.from_state(state)
+        with self.connection() as db:
+            db.execute('BEGIN')
+            summaries = self._summaries(db)
+            trades = [self.decode(r) for r in db.execute('SELECT * FROM trades')]
+            return [portfolio_exposure(trades, summaries[currency], settings_snapshot=config,
+                                       market=market, mode=config.mode, when=when)
+                    for market, (currency, *_) in MARKETS.items() if currency in summaries]
+
+    @contextmanager
+    def _admission_transaction(self, key, snapshot):
+        """Commit rejected attempts without creating accounts, trades or trade events."""
+        from autot.portfolio_risk.models import PortfolioRiskRejected
+        rejection = None
+        with self.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            db.execute('SAVEPOINT admission')
+            try:
+                yield db
+            except PortfolioRiskRejected as error:
+                db.execute('ROLLBACK TO admission')
+                db.execute('INSERT INTO paper_trade_rejections VALUES (?, ?, ?, ?, ?)',
+                           (str(uuid4()), audit.timestamp(), key,
+                            json.dumps(snapshot, allow_nan=False), error.result.model_dump_json()))
+                rejection = error
+            db.execute('RELEASE admission')
+        # Raise only after the rejection audit commits. The write lock covers both
+        # the evaluated portfolio and its recorded decision, even on rejection.
+        if rejection is not None:
+            raise rejection
+
+    def rejections(self, limit=100):
+        from autot.portfolio_risk.models import RiskRejection
+        with self.connection() as db:
+            return [RiskRejection.model_validate(dict(
+                decision_id=r['decision_id'], recorded_at=r['recorded_at'],
+                confirmation_key=r['confirmation_key'],
+                proposal=json.loads(r['proposal_json']), decision=json.loads(r['decision_json'])))
+                for r in db.execute('SELECT * FROM paper_trade_rejections ORDER BY rowid DESC LIMIT ?', (limit,))]
+
     def confirm(self, key, snapshot, state, *, create_another=False):
         if not isinstance(key, str) or not 1 <= len(key) <= 200:
             raise ValueError("A confirmation event key is required.")
         identity = opportunity_identity(snapshot)
         intent = "additional:" + key if create_another else "default"
-        with self.connection() as db:
-            db.execute("BEGIN IMMEDIATE")
+        with self._admission_transaction(key, snapshot) as db:
             previous = db.execute("SELECT * FROM trades WHERE confirmation_key=?", (key,)).fetchone()
             if previous:
                 return self.decode(previous)
@@ -156,12 +229,10 @@ class Ledger:
             currency, capital = snapshot["currency"], snapshot["account_capital"]
             db.execute("INSERT OR IGNORE INTO accounts VALUES (?, ?)", (currency, capital))
             summary = self._summaries(db)[currency]
-            if summary["capital"] != D(capital):
-                raise ValueError("Use the existing paper account capital for this currency.")
-            if D(snapshot["intended_position_value"]) > summary["available"]:
-                raise ValueError("Insufficient available paper capital, including pending reservations.")
             from autot.settings.trade_policy import enforce_admission
-            enforce_admission(snapshot, [self.decode(r) for r in db.execute('SELECT * FROM trades')], summary)
+            decision = enforce_admission(snapshot, [self.decode(r) for r in db.execute('SELECT * FROM trades')], summary)
+            if snapshot.get('configuration_source') == 'SETTINGS_V1':
+                snapshot = dict(snapshot, portfolio_risk_decision=decision.model_dump(mode='json'))
             trade_id = str(uuid4())
             db.execute("INSERT INTO trades "
                        "(trade_id, confirmation_key, snapshot, state, revision, opportunity_id, intent_key) "

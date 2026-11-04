@@ -2,7 +2,7 @@
 
 Settings live independently of Streamlit in `autot/settings/models.py` (Pydantic models),
 `store.py` (persistence), `context.py` (one configuration per scan), and
-`trade_policy.py` (transactional admission checks). All models reject unknown fields,
+`trade_policy.py` (compatibility entry point to the Portfolio Risk admission engine). All models reject unknown fields,
 non-finite numbers and invalid ranges. Nested configuration is immutable. Public
 service boundaries revalidate even model copies made without validation.
 
@@ -141,32 +141,40 @@ Every new service-created trade persists settings revision, profile ID/name/vers
 profile hash, `configuration_source=SETTINGS_V1`, mode, validated trading settings,
 and execution risk percent. Its existing snapshot already includes market, index,
 regime, direction, capital, actual quantity and sizing risk. The UI locks risk to
-the scan's profile; mismatched explicit-profile sizing is rejected. Legacy API
-callers without a captured state use the active profile and may supply an explicit
-sizing risk; that actual override is preserved separately as `execution_risk_percent`
-and the existing `risk_percent`, without pretending the profile had different values.
-New integration code should always pass captured settings and matching risk.
+the scan's profile; mismatched profile sizing is rejected. API callers without a
+captured state use the active profile. Portfolio Risk V1 now requires their sizing
+risk to match that profile too; Settings V1 previously allowed explicit overrides.
+Existing override snapshots are retained unchanged. New integration code should
+always pass captured settings and matching risk. Accepted new trades also capture
+a typed `portfolio_risk_decision`. Previews are read-only; rejected confirmations
+append a separate rejection audit without creating trades or trade events.
 
 Old snapshots receive only the read-time label `PRE_SETTINGS_BASELINE`. No profile,
 mode or detailed configuration is invented. The ledger snapshot, trade ID, P&L,
 execution state and audit events are not rewritten. Low-level ledger import/fixture
 paths can still preserve historical snapshots without configuration; new application
-trades must go through the service. No production database migration is needed.
+trades must go through the service. Ledger initialization adds the rejection
+audit table without rewriting existing records.
 
 ## Risk and capital compatibility
 
 Baseline risk is **1.0%**, preserving the current effective behavior. Suggested
 30% position value, 5 simultaneous positions, 2.5% portfolio risk and 5 new trades
-per UTC day are stored but their enforcement switches default OFF. Minimum R:R is
+per market-local day per mode are stored but their enforcement switches default OFF. Minimum R:R is
 0 (no additional admission restriction); existing price/direction validation remains.
 BUY/SELL and manual acknowledgement default ON. Set risk to 0.5% and enable the
-limits explicitly in a new profile to adopt them.
+limits explicitly in a new profile to adopt them. The Settings summary lists each
+configured value with ENFORCED or INACTIVE status.
 
 Enabled admission checks run in the same serialized ledger transaction as capital
-reservations. Limits include pending entries, cover the entire currency account
-across forward/research modes, and use base capital, not marked-to-market equity.
-Portfolio risk sums quantity times absolute fill/reference-to-stop distance; daily
-creation limits include cancelled creations. No FX aggregation is attempted.
+reservations. Position and portfolio-risk limits include pending entries, cover
+the entire currency account across forward/research modes, and use base capital,
+not marked-to-market equity. Portfolio Risk V1 sums quantity times the absolute
+snapshotted signal-to-stop distance for planned risk, and reports fill-adjusted
+risk separately. Daily limits count confirmations per mode and market-local date,
+including cancelled creations. Pre-settings records count with forward admissions
+without assigning a stored mode. No FX aggregation is attempted. See
+[PORTFOLIO_RISK.md](PORTFOLIO_RISK.md) for the engine API and complete semantics.
 Limits are creation-time checks: gaps can increase actual position value/risk.
 The existing fill-time available-capital check remains strict and unchanged.
 

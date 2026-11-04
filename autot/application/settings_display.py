@@ -73,6 +73,17 @@ def render_settings():
              f'({"enabled" if risk.enforce_position_limit else "not enforced"}) · '
              f'Maximum positions: {risk.maximum_simultaneous_positions} '
              f'({"enabled" if risk.enforce_positions_limit else "not enforced"})')
+    st.dataframe([
+        {'Limit': label, 'Configured': value, 'Status': 'ENFORCED' if enabled else 'INACTIVE'}
+        for label, value, enabled in [
+            ('Risk/trade', f'{risk.risk_per_trade_percent:g}%', True),
+            ('Max position', f'{risk.maximum_position_percent:g}%', risk.enforce_position_limit),
+            ('Max positions', str(risk.maximum_simultaneous_positions), risk.enforce_positions_limit),
+            ('Portfolio risk', f'{risk.maximum_total_portfolio_risk_percent:g}%', risk.enforce_portfolio_risk_limit),
+            ('Daily trade limit', str(risk.maximum_new_trades_per_day), risk.enforce_daily_trade_limit),
+            ('Minimum R:R', f'{risk.minimum_risk_reward:g}', risk.minimum_risk_reward > 0),
+            ('Allow BUY', str(risk.allow_buy), True), ('Allow SELL', str(risk.allow_sell), True),
+        ]], hide_index=True)
     st.caption('Settings apply after Save. Existing scan results retain their original profile; run a new scan after saving. New limits are opt-in.')
     if 'settings_notice' in st.session_state:
         st.success(st.session_state.pop('settings_notice'))

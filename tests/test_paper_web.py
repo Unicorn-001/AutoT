@@ -219,7 +219,10 @@ def summary_fixture(service):
     service.cancel(seed["trade_id"])
     result = []
     for status, symbol in [("OPEN", "MPC"), ("CLOSED", "MRNA"), ("PENDING_ENTRY", "PENDING"), ("CANCELLED", "MPC")]:
-        snapshot = {k: v for k, v in seed.items() if k not in STATE_FIELDS}
+        # These arbitrary historical display fixtures are not freshly sized proposals.
+        from autot.settings.models import TradeSettingsSnapshot
+        excluded = set(STATE_FIELDS) | set(TradeSettingsSnapshot.model_fields) | {'portfolio_risk_decision'}
+        snapshot = {k: v for k, v in seed.items() if k not in excluded}
         snapshot.update(symbol=symbol, quantity=1 if status == "PENDING_ENTRY" else 10 if symbol == "MPC" else 22,
                         signal_price="478" if symbol == "MPC" else "217",
                         stop_loss="468.51" if symbol == "MPC" else "210",
@@ -268,7 +271,8 @@ def test_summary_tables_details_restart_and_no_ledger_changes(ui):
         assert {"Signal Price", "Stop", "Target", "Qty", "Intended Value", "Eligible At", "Trade Quality", "Confidence"} <= set(pending.columns)
         assert {"Created At", "Cancelled At", "Trade ID"} <= set(cancelled.columns)
         assert trades[3]["trade_id"] in set(cancelled["Trade ID"])
-        assert len(app.metric) == 15  # five independent metrics per currency; no total
+        assert len([m for m in app.metric if m.label == 'Capital']) == 3
+        assert len([m for m in app.metric if m.label == 'Account equity']) == 3  # per currency, no FX total
         assert {m.value for m in app.metric if m.label == "Capital"} == {"$10,000.00", "£10,000.00", "₹10,000.00"}
         assert any(m.value == "+$208.13" for m in app.metric)
         assert any(m.value == "-$42.10" for m in app.metric)
