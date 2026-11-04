@@ -363,6 +363,8 @@ def render_paper_dashboard():
                 st.write(' '.join(rejected.decision.reasons))
                 st.json(rejected.model_dump(mode='json'))
         render_performance_journal(service.ledger)
+        from autot.application.strategy_analysis_display import render_strategy_analysis
+        render_strategy_analysis(service.ledger)
     except ValueError as error:
         st.error(str(error))
     except Exception:

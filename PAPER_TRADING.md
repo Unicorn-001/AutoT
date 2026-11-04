@@ -495,3 +495,22 @@ the existing base-capital basis; displayed equity includes realized P&L only.
 Exposure across research and forward positions remains shared; performance views
 retain their existing mode separation. Neither previews nor this view updates
 prices, executes trades, or rewrites historical records.
+
+## Strategy Analysis V1
+
+Paper Trading now has a separate **Show Strategy Analysis** area with closed-trade
+outcomes, strategy alignment, pairs/triples, regime and BUY/SELL comparisons,
+score/risk bands, profile comparison, completeness, observations and CSV exports.
+New scan opportunities retain a typed snapshot of all available strategy votes
+and their actual weights; confirmations persist it without recalculating signals.
+Existing trades are not rewritten. Journal selections now show strategy evidence,
+profile metadata, admission, fills and excursion coverage together.
+
+The new analysis defaults to explicit `FORWARD_TEST` records. `RESEARCH` and
+`UNKNOWN_LEGACY` are separate selections; unlike the older Performance journal,
+unknown historical modes are excluded from forward statistics. All monetary
+summaries remain currency-separated. MFE/MAE require durable bar evidence;
+realized-close drawdown is not mark-to-market equity drawdown. Observations never
+change settings. Experiment ideas can be exported as DRAFT JSON, without creating
+or activating profiles. See [STRATEGY_ANALYSIS.md](STRATEGY_ANALYSIS.md) for metrics,
+legacy limitations, sample warnings and manual review instructions.

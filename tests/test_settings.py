@@ -34,6 +34,8 @@ def test_exact_checkpoint_strategy_and_scanner_outputs(kind, monkeypatch, tmp_pa
     fixture = json.loads((Path(__file__).parent / 'fixtures/settings_baseline_8b08e3c.json').read_text())[kind]
     row, decision = bind_analysis(analyse_stock, AutoTSettings())('TEST', prices(kind), prices('up','SPY'), PerformanceTracker())
     # All calculated fields, text reasons, sizing, quality and backtest scores are exact.
+    features = row.pop('strategy_features')
+    assert features['version'] == 1 and len(features['strategies']) == 10
     assert row == fixture['row']
     assert asdict(decision) == fixture['decision']
     assert build_scan_rankings([row], 10) == build_scan_rankings([fixture['row']], 10)

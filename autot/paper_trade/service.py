@@ -94,6 +94,10 @@ def build_snapshot(opportunity, *, market, index_name, signal_time, timeframe,
         "quantity": sizing.quantity, "intended_position_value": str(prices[0] * sizing.quantity),
         "eligible_at": calendar.next_open(market, max(signal_time, created_at)).isoformat(),
     }
+    if opportunity.get("strategy_features") is not None:
+        from autot.strategy_analysis.models import TradeFeatureSnapshot
+        snapshot["strategy_features"] = TradeFeatureSnapshot.model_validate(
+            opportunity["strategy_features"]).model_dump(mode='json')
     # Copy and check persistence compatibility now, before a confirmation transaction.
     return json.loads(json.dumps(snapshot, allow_nan=False, default=_json_scalar))
 

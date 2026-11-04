@@ -102,6 +102,8 @@ def render_performance_journal(ledger):
     if entries:
         selected = st.selectbox('Journal trade', list(entries),
                                 format_func=lambda key: f"{entries[key]['trade']['symbol']} · {entries[key]['trade']['status']} · {key}")
+        from autot.application.strategy_analysis_display import render_trade_features
+        render_trade_features(entries[selected])
         st.markdown('**Event timeline**')
         st.dataframe(pd.DataFrame(timeline_rows(report['events'].get(selected, []))), hide_index=True)
         st.caption(entries[selected]['excursion_note'])

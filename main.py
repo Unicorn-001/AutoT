@@ -164,7 +164,10 @@ def analyse_stock(
     )
 
 
+    from autot.strategy_analysis.snapshot import capture_strategies
+
     result = {
+        "strategy_features": capture_strategies(weighted_strategy_results, active_settings.strategies, decision.market_regime),
         "symbol": symbol,
         "signal": decision.final_signal,
         "confidence": decision.confidence,
