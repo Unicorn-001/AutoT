@@ -254,7 +254,7 @@ def test_fatal_run_marked_failed(setup, monkeypatch):
     service, _, _ = setup
     def fail():
         raise RuntimeError('unreadable')
-    monkeypatch.setattr(service.ledger, 'all', fail)
+    monkeypatch.setattr(service.ledger, 'active_trades', fail)
     with pytest.raises(RuntimeError):
         service.update_positions()
     run = service.ledger.recent_runs()[0]
@@ -285,18 +285,18 @@ def test_concurrent_monitors_only_commit_one_bar_event_set(setup):
     service, provider, now = setup
     trade = confirm(service)
     barrier = Barrier(2)
-    def fetch(*args, **kwargs):
-        barrier.wait(timeout=5)
-        return Provider([bar()]).get_intraday_bars(*args, **kwargs)
-    provider.get_intraday_bars = fetch
+    provider.bars = [bar()]
     services = [PaperTradingService(Ledger(service.ledger.path), provider, clock=lambda: OPEN + BAR)
                 for _ in range(2)]
     with ThreadPoolExecutor(max_workers=2) as pool:
-        list(pool.map(lambda s: s.update_positions(), services))
+        def update(s):
+            barrier.wait(timeout=5)
+            return s.update_positions()
+        list(pool.map(update, services))
     types = kinds(service.ledger, trade)
     assert types.count('ENTRY_FILLED') == types.count('POSITION_CHECKED') == 1
     runs = service.ledger.recent_runs()
-    assert {r['status'] for r in runs} == {'SUCCESS', 'PARTIAL'}
+    assert {r['status'] for r in runs} == {'SUCCESS'}
     assert sum(r['bars_processed'] for r in runs) == 1
 
 

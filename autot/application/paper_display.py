@@ -313,13 +313,14 @@ def render_paper_dashboard():
     st.info("The V1 calendar uses local weekday sessions. Holidays, shortened sessions and missing bars require review; no prices are invented.")
     try:
         service = paper_service()
+        render_monitor_status(service.ledger)
         render_review()
         if st.button("Update Paper Positions", key="paper_update"):
             with st.spinner("Processing available completed 5-minute bars…"):
                 updated = service.update_positions()
             run = service.ledger.get_run(service.last_update_run_id)
             message = f"Checked {len(updated)} pending/open paper trades. Run status: {run['status']}."
-            if run['status'] == 'SUCCESS':
+            if run['status'] in ('SUCCESS', 'NO_WORK'):
                 st.success(message)
             else:
                 st.warning(message + ' Inspect review details and update run history.')
@@ -370,3 +371,27 @@ def render_paper_dashboard():
     except Exception:
         LOGGER.exception("Paper dashboard failed")
         st.error("Paper trading is unavailable. Check AUTOT_DATA_DIR and server logs.")
+
+
+def render_monitor_status(ledger):
+    from autot.paper_monitor import read_status
+    with st.expander('Paper Monitor'):
+        try:
+            status = read_status(ledger.path)
+        except (OSError, RuntimeError):
+            st.warning('Monitor status unavailable; check settings storage and server logs.')
+            return
+        st.write(f"Configured: {'ON' if status['configured'] else 'OFF'} · "
+                 f"Process: {status['process_status']} · Interval: {status['interval_minutes']} minutes")
+        st.write(f"Active trades: {status['pending'] + status['open']} · "
+                 f"Pending: {status['pending']} · Open: {status['open']}")
+        st.write(f"Last heartbeat: {status['heartbeat'] or 'Never'} · Phase: {status['phase'] or 'Unknown'}")
+        st.write(f"Next expected run: {status['next_expected_run'] or 'Unavailable'}")
+        for key, label in [('last_run', 'Last scheduled run'), ('last_success', 'Last success'),
+                           ('last_failure', 'Last failure / partial run')]:
+            run = status[key]
+            st.write(f"{label}: " + (f"{run['started_at']} · {run['status']}" if run else 'Never'))
+        st.caption('Start externally from the AutoT directory using the same AUTOT_DATA_DIR. '
+                   'Enable and save Monitoring settings first. Refresh this page for current status. '
+                   'ACTIVE means the process holds the lock; a stale heartbeat may indicate a slow or stuck update.')
+        st.code('python -m autot.paper_monitor\npython -m autot.paper_monitor --once\npython -m autot.paper_monitor --status', language='bash')

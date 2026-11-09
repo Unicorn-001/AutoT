@@ -71,7 +71,7 @@ def test_explicit_update_click_creates_run_but_reruns_do_not(ui):
     assert len(service.ledger.recent_runs()) == 1
     button(app, 'Update Paper Positions').click().run()
     assert len(service.ledger.recent_runs()) == 2
-    assert all(r['status'] == 'SUCCESS' for r in service.ledger.recent_runs())
+    assert all(r['status'] == 'NO_WORK' for r in service.ledger.recent_runs())
 
 
 def test_missing_data_run_is_not_presented_as_success(ui):

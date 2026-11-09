@@ -35,7 +35,7 @@ def initialize(db, decode):
         idempotency_key TEXT NOT NULL UNIQUE, payload_json TEXT NOT NULL)""")
     db.execute("""CREATE TABLE IF NOT EXISTS paper_update_runs (
         run_id TEXT PRIMARY KEY, started_at TEXT NOT NULL, completed_at TEXT,
-        trigger_type TEXT NOT NULL CHECK(trigger_type = 'MANUAL'),
+        trigger_type TEXT NOT NULL CHECK(trigger_type IN ('MANUAL','SCHEDULED')),
         trades_considered INTEGER NOT NULL DEFAULT 0,
         trades_updated INTEGER NOT NULL DEFAULT 0,
         trades_opened INTEGER NOT NULL DEFAULT 0,
@@ -44,8 +44,22 @@ def initialize(db, decode):
         warnings_count INTEGER NOT NULL DEFAULT 0,
         errors_count INTEGER NOT NULL DEFAULT 0,
         provider TEXT NOT NULL,
-        status TEXT NOT NULL CHECK(status IN ('RUNNING','SUCCESS','PARTIAL','FAILED')),
+        status TEXT NOT NULL CHECK(status IN ('RUNNING','SUCCESS','PARTIAL','FAILED','NO_WORK')),
         summary_json TEXT NOT NULL)""")
+    # Rebuild only run metadata to widen legacy CHECK constraints. The caller
+    # disables FK enforcement before its atomic schema transaction; event links
+    # keep their original table name, run IDs and row order.
+    schema = db.execute("SELECT sql FROM sqlite_master WHERE name='paper_update_runs'").fetchone()[0]
+    if "SCHEDULED" not in schema:
+        replacement = schema.replace('paper_update_runs', 'paper_update_runs_v2', 1).replace(
+            "trigger_type = 'MANUAL'", "trigger_type IN ('MANUAL','SCHEDULED')").replace(
+            "'RUNNING','SUCCESS','PARTIAL','FAILED'", "'RUNNING','SUCCESS','PARTIAL','FAILED','NO_WORK'")
+        db.execute(replacement)
+        db.execute('INSERT INTO paper_update_runs_v2 SELECT * FROM paper_update_runs ORDER BY rowid')
+        db.execute('DROP TABLE paper_update_runs')
+        db.execute('ALTER TABLE paper_update_runs_v2 RENAME TO paper_update_runs')
+    db.execute("""CREATE TABLE IF NOT EXISTS paper_monitor_status (
+        singleton INTEGER PRIMARY KEY CHECK(singleton=1), payload TEXT NOT NULL)""")
     db.execute("CREATE INDEX IF NOT EXISTS paper_events_trade ON paper_trade_events(trade_id, event_id)")
     for action in ('UPDATE', 'DELETE'):
         db.execute(f"""CREATE TRIGGER IF NOT EXISTS paper_events_no_{action.lower()}

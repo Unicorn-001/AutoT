@@ -46,8 +46,8 @@ external `AUTOT_DATA_DIR` is the operator's responsibility to back up/protect.
   each 10,000 in its own currency. Existing capital/balances are never changed.
 - **News:** enabled, general news, official disclosures, recent window days (7),
   maximum articles (50). Placeholders only: no effect until the other branch merges.
-- **Monitoring:** update interval (5 minutes), daily scan enabled (false).
-  Placeholders only: no scheduling, threads, workers or automatic execution.
+- **Monitoring:** paper monitor enabled (false), update interval (5 minutes), daily scan enabled (false; reserved).
+  Enable the external Paper Monitor explicitly; saving settings does not start a process.
 - **Advanced:** read-only 5m execution, next-session-open fills, STOP-first same-bar
   ambiguity, SessionCalendar, Yahoo data, PAPER execution and ledger path policy.
 
@@ -231,3 +231,21 @@ Tests also cover changed parameters/weights/enablement, validation, hashes, corr
 restart persistence, atomic rollback, concurrent saves, immutable profiles, trade
 snapshots, old records, capital preservation, limits, research and performance filters,
 and the Settings form without launching a Streamlit server.
+
+
+## Paper Monitor V1
+
+`monitoring.paper_monitor_enabled` defaults to false for new and old settings.
+An explicitly saved true value enables the external monitor to run; saving this
+setting does not launch a process. The existing positive integer
+`paper_update_interval_minutes` controls the cadence (default 5). No extra
+run-only-with-trades switch is needed: empty passes always avoid provider work.
+`daily_scan_enabled` remains reserved and never starts Scanner.
+
+Start `python -m autot.paper_monitor` separately using the same AUTOT_DATA_DIR as
+the UI; `--once` requires the enabled flag too. `--status` shows configured state
+separately from process lock ownership. Disabling is observed within 15 seconds
+while waiting, or after the current pass. Restart the process after re-enabling.
+Old settings hashes remain verifiable without rewriting revision history.
+Monitoring changes do not alter strategy profiles or captured trade snapshots.
+See [PAPER_MONITOR.md](PAPER_MONITOR.md) for operation and limitations.

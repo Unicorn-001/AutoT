@@ -61,6 +61,7 @@ class Ledger:
                     revision INTEGER NOT NULL DEFAULT 0);
             """)
             # Serialize schema upgrade with confirmations and other constructors.
+            db.execute("PRAGMA foreign_keys=OFF")
             db.execute("BEGIN IMMEDIATE")
             columns = {r["name"] for r in db.execute("PRAGMA table_info(trades)")}
             if "opportunity_id" not in columns:
@@ -83,6 +84,8 @@ class Ledger:
                 decision_id TEXT PRIMARY KEY, recorded_at TEXT NOT NULL,
                 confirmation_key TEXT NOT NULL, proposal_json TEXT NOT NULL,
                 decision_json TEXT NOT NULL)""")
+            if db.execute("PRAGMA foreign_key_check").fetchone():
+                raise sqlite3.IntegrityError("Paper ledger foreign key check failed.")
 
     @contextmanager
     def connection(self):
@@ -291,12 +294,12 @@ class Ledger:
             return [dict(r) for r in db.execute(
                 "SELECT * FROM paper_trade_events WHERE trade_id=? ORDER BY event_id", (trade_id,))]
 
-    def start_run(self, provider, started_at):
+    def start_run(self, provider, started_at, source="MANUAL"):
         run_id = str(uuid4())
         with self.connection() as db:
             db.execute("INSERT INTO paper_update_runs "
                        "(run_id, started_at, trigger_type, provider, status, summary_json) "
-                       "VALUES (?, ?, 'MANUAL', ?, 'RUNNING', '{}')", (run_id, started_at, provider))
+                       "VALUES (?, ?, ?, ?, 'RUNNING', '{}')", (run_id, started_at, source, provider))
         return run_id
 
     def finish_run(self, run_id, counts, status, summary):
@@ -316,3 +319,23 @@ class Ledger:
         with self.connection() as db:
             return [dict(r) for r in db.execute(
                 "SELECT * FROM paper_update_runs ORDER BY rowid DESC LIMIT ?", (limit,))]
+
+    def active_trades(self):
+        with self.connection() as db:
+            return [self.decode(r) for r in db.execute(
+                "SELECT * FROM trades WHERE json_extract(state, '$.status') "
+                "IN ('PENDING_ENTRY','OPEN') ORDER BY rowid")]
+
+    def monitor_heartbeat(self, payload):
+        with self.connection() as db:
+            db.execute('INSERT INTO paper_monitor_status VALUES (1, ?) '
+                       'ON CONFLICT(singleton) DO UPDATE SET payload=excluded.payload',
+                       (json.dumps(payload),))
+
+    def recover_monitor_runs(self):
+        # Called only by the new exclusive monitor owner after a crash/restart.
+        with self.connection() as db:
+            db.execute("UPDATE paper_update_runs SET status='FAILED', completed_at=?, "
+                       "errors_count=errors_count+1, summary_json=? "
+                       "WHERE trigger_type='SCHEDULED' AND status='RUNNING'",
+                       (audit.timestamp(), json.dumps({'error_category': 'PROCESS_INTERRUPTED'})))

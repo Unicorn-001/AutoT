@@ -166,7 +166,7 @@ def render_settings():
                     if name == 'news':
                         st.info('Reserved for the future News Intelligence merge. These fields have no effect in V1.')
                     if name == 'monitoring':
-                        st.info('Preparation only. No scheduler is installed or started; updates remain manual.')
+                        st.info('Enable Paper monitor and save settings, then run python -m autot.paper_monitor externally. The UI does not start a process. Daily scan remains reserved and has no effect.')
                     if name == 'general':
                         st.caption('RESEARCH has a separate trade identity and performance view. It shares strict real paper-account capital reservations; no extra capital is granted.')
                     result[name] = edit_model(getattr(draft, name), prefix+'.'+name)

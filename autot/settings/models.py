@@ -191,6 +191,7 @@ class News(Model):
 
 
 class Monitoring(Model):
+    paper_monitor_enabled: bool = False
     paper_update_interval_minutes: PositiveInt = 5
     daily_scan_enabled: bool = False
 

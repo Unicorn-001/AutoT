@@ -62,7 +62,12 @@ class SettingsStore:
         for version, payload, digest in db.execute('SELECT version,payload,hash FROM revisions ORDER BY version DESC'):
             try:
                 state = SettingsState.model_validate_json(payload)
-                if configuration_hash(state) != digest or state.settings_version != version:
+                persisted_shape = state.model_dump(mode='json')
+                # Old signed revisions predate the default-OFF monitor field.
+                # Verify their original shape without rewriting append-only history.
+                if 'paper_monitor_enabled' not in json.loads(payload).get('settings', {}).get('monitoring', {}):
+                    persisted_shape['settings']['monitoring'].pop('paper_monitor_enabled')
+                if configuration_hash(persisted_shape) != digest or state.settings_version != version:
                     raise ValueError('Revision integrity mismatch')
                 if invalid:
                     self._warn('Invalid settings revision detected. Using the last valid configuration; review Settings before trading.')

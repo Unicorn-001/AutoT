@@ -262,18 +262,23 @@ class PaperTradingService:
         state["manual_close_requested_at"] = utc(self.clock()).isoformat()
         return self.ledger.update(trade, state)
 
-    def update_positions(self):
-        """One explicit manual pass, with a durable run even when nothing is due."""
-        run_id = self.ledger.start_run(type(self.provider).__name__, utc(self.clock()).isoformat())
+    def update_positions(self, *, source='MANUAL'):
+        """One bounded pass shared by UI and CLI, serialized across processes."""
+        if source not in ('MANUAL', 'SCHEDULED'):
+            raise ValueError('Unsupported paper update source.')
+        from autot.paper_trade.locking import database_lock
+        with database_lock(self.ledger.path, 'update'):
+            return self._update_positions(source)
+
+    def _update_positions(self, source):
+        run_id = self.ledger.start_run(type(self.provider).__name__, utc(self.clock()).isoformat(), source)
         self.last_update_run_id = run_id
         counts = dict.fromkeys(('trades_considered', 'trades_updated', 'trades_opened', 'trades_closed',
                                'bars_processed', 'warnings_count', 'errors_count'), 0)
         updated, conflicts = [], 0
         fatal = False
         try:
-            for trade in self.ledger.all():
-                if trade['status'] not in ('PENDING_ENTRY', 'OPEN'):
-                    continue
+            for trade in self.ledger.active_trades():
                 counts['trades_considered'] += 1
                 end = utc(self.clock())
                 start = utc(trade['last_checked_at']) + BAR if trade['last_checked_at'] else utc(trade['eligible_at'])
@@ -297,9 +302,9 @@ class PaperTradingService:
                     counts['warnings_count'] += 1
                     updated.append(self.ledger.get(trade['trade_id']))
                     continue
-                except Exception:
+                except ValueError:
                     counts['errors_count'] += 1
-                    LOGGER.exception('Paper monitoring failed for trade %s', trade['trade_id'])
+                    LOGGER.warning('Paper provider/execution verification failed for trade %s', trade['trade_id'])
                     # Roll back evaluated events along with a rejected state change.
                     state = {key: trade[key] for key in STATE_FIELDS}
                     state.update(review_required=True,
@@ -328,8 +333,13 @@ class PaperTradingService:
                 status = 'PARTIAL' if counts['bars_processed'] else 'FAILED'
             elif counts['warnings_count']:
                 status = 'PARTIAL'
+            elif not counts['trades_considered']:
+                status = 'NO_WORK'
             else:
                 status = 'SUCCESS'
             self.ledger.finish_run(run_id, counts, status, {'concurrent_conflicts': conflicts,
-                                                          'aborted': fatal})
+                                                          'aborted': fatal,
+                                                          'error_category': 'ABORTED' if fatal else
+                                                          'UPDATE_UNVERIFIED' if counts['errors_count'] else
+                                                          'REVIEW_REQUIRED' if counts['warnings_count'] else None})
         return updated

@@ -116,7 +116,7 @@ def render_performance_journal(ledger):
     st.markdown('**Update run history**')
     runs = ledger.recent_runs()
     if runs:
-        labels = {'status': 'Status', 'trades_considered': 'Trades considered', 'trades_opened': 'Trades opened',
+        labels = {'trigger_type': 'Source', 'status': 'Status', 'trades_considered': 'Trades considered', 'trades_opened': 'Trades opened',
                   'trades_closed': 'Trades closed', 'trades_updated': 'Trades updated', 'bars_processed': 'Bars processed',
                   'warnings_count': 'Warnings', 'errors_count': 'Errors', 'provider': 'Provider'}
         st.dataframe(pd.DataFrame([dict({'Run ID': r['run_id'], 'Started': format_timestamp(r['started_at']),

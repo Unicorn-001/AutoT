@@ -222,13 +222,13 @@ India 09:15 Kolkata. Do not interpret a weekend/holiday update as a promise of b
 All automated tests use offline fixtures; successful tests do not establish live
 Yahoo availability or verify a real next-session fill.
 
-## Future worker boundary
+## Worker boundary
 
-The intended architecture is **Streamlit UI + scheduled daily scanner + separate
-5-minute paper monitor worker**. A future worker constructs `Ledger`, an injected
-provider and authoritative calendar, then calls
-`PaperTradingService(...).update_positions()` once per scheduled run. Keep scheduling,
-deployment, credentials and alerting outside Streamlit and outside this engine.
+The architecture is **Streamlit UI + separate paper monitor process**.
+`python -m autot.paper_monitor` constructs `Ledger` and the existing provider/calendar,
+then calls `PaperTradingService(...).update_positions()` per scheduled run.
+Automatic daily scanning and an authoritative holiday calendar remain future work.
+Scheduling, deployment, credentials and alerting stay outside Streamlit.
 No strategy learning or optimization uses the results yet.
 
 ## Manual MPC duplicate correction
@@ -354,8 +354,9 @@ review remain warnings.
 Counters are finalized at normal/exceptional completion. After a hard kill,
 a RUNNING record's counters may be incomplete; committed events remain the durable
 operation evidence. Runs are separate from per-trade transactions, so a later
-trade's failure does not erase earlier successful updates. There is no unattended
-worker or automatic retry scheduler in this phase.
+trade's failure does not erase earlier successful updates. Scheduler V1 adds an
+external worker; see PAPER_MONITOR.md. Abandoned scheduled runs are explicitly
+marked FAILED at restart. Empty active-trade sets now record NO_WORK.
 
 ### Performance and journal
 
@@ -469,8 +470,9 @@ After saving settings, run a fresh scan to use the new profile. In Paper Trading
 inspect the raw trade snapshot to verify `configuration_source`, `settings_version`,
 `strategy_profile_id`, `strategy_profile_name`, `strategy_profile_version`,
 `strategy_config_hash`, `mode`, `trading_settings` and `execution_risk_percent`.
-News and Monitoring settings are placeholders only; updates still require the
-existing manual action. No scheduler or new execution semantics are enabled.
+News settings and daily scanning remain placeholders. Monitoring can now be
+enabled for the external Paper Monitor; manual updates remain available, with
+unchanged execution semantics. Monitoring is OFF by default.
 
 
 ## Portfolio Risk Engine V1
@@ -514,3 +516,23 @@ realized-close drawdown is not mark-to-market equity drawdown. Observations neve
 change settings. Experiment ideas can be exported as DRAFT JSON, without creating
 or activating profiles. See [STRATEGY_ANALYSIS.md](STRATEGY_ANALYSIS.md) for metrics,
 legacy limitations, sample warnings and manual review instructions.
+
+## Automatic Paper Monitor V1
+
+See [PAPER_MONITOR.md](PAPER_MONITOR.md) for the external CLI, configuration,
+locking, status and recovery details. `python -m autot.paper_monitor` calls the
+same `PaperTradingService.update_positions()` implementation as **Update Paper
+Positions**. Both paths serialize using a process-safe update lock and preserve
+existing SQLite transactions, capital checks and audit idempotency. Monitoring
+is OFF by default and never scans or confirms new trades. The UI only shows
+status and external startup commands; browser lifetime does not control monitoring.
+
+Run history now distinguishes MANUAL and SCHEDULED and records NO_WORK when no
+pending/open trades exist. Existing trade snapshots, fills, stops, targets and
+historical audit records are preserved. Execution remains completed 5m bars,
+NEXT_SESSION_OPEN and STOP_FIRST, with the existing weekday-calendar limitations.
+
+Future **FILL-TIME RISK RECHECK**: next-session gaps can materially change actual
+stop risk versus planned risk. A future version may recompute risk at fill and
+optionally reduce size/reject entry. Scheduler V1 does not change sizing or
+forward-test execution rules.
