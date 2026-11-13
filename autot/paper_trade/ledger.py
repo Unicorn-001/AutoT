@@ -80,6 +80,8 @@ class Ledger:
             db.execute("CREATE UNIQUE INDEX IF NOT EXISTS trade_intent_unique "
                        "ON trades(opportunity_id, intent_key)")
             audit.initialize(db, self.decode)
+            from autot.notifications import initialize
+            initialize(db)
             db.execute("""CREATE TABLE IF NOT EXISTS paper_trade_rejections (
                 decision_id TEXT PRIMARY KEY, recorded_at TEXT NOT NULL,
                 confirmation_key TEXT NOT NULL, proposal_json TEXT NOT NULL,

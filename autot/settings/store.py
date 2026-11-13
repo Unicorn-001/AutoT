@@ -67,6 +67,8 @@ class SettingsStore:
                 # Verify their original shape without rewriting append-only history.
                 if 'paper_monitor_enabled' not in json.loads(payload).get('settings', {}).get('monitoring', {}):
                     persisted_shape['settings']['monitoring'].pop('paper_monitor_enabled')
+                if 'notifications' not in json.loads(payload).get('settings', {}):
+                    persisted_shape['settings'].pop('notifications')
                 if configuration_hash(persisted_shape) != digest or state.settings_version != version:
                     raise ValueError('Revision integrity mismatch')
                 if invalid:

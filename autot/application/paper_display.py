@@ -314,6 +314,7 @@ def render_paper_dashboard():
     try:
         service = paper_service()
         render_monitor_status(service.ledger)
+        render_notifications(service.ledger)
         render_review()
         if st.button("Update Paper Positions", key="paper_update"):
             with st.spinner("Processing available completed 5-minute bars…"):
@@ -395,3 +396,25 @@ def render_monitor_status(ledger):
                    'Enable and save Monitoring settings first. Refresh this page for current status. '
                    'ACTIVE means the process holds the lock; a stale heartbeat may indicate a slow or stuck update.')
         st.code('python -m autot.paper_monitor\npython -m autot.paper_monitor --once\npython -m autot.paper_monitor --status', language='bash')
+
+
+def render_notifications(ledger):
+    from autot.notifications import configuration, read_status
+    with st.expander('Notifications'):
+        try:
+            config = configuration()
+            status = read_status(ledger.path)
+            st.caption(f"{'Enabled' if config.notifications_enabled else 'Disabled'} · Channel: {config.notification_channel}")
+            st.write(f"Pending notifications: {status['pending']}")
+            for label, key, stamp in [('Last delivered', 'last_delivered', 'delivered_at'),
+                                      ('Last failed', 'last_failed', 'last_failure_at')]:
+                item = status[key]
+                st.write(f"{label}: {item[stamp] if item else 'None'}")
+            if status['history']:
+                st.table([{k: row[k] for k in ('event_type', 'created_at', 'symbol', 'delivery_status',
+                                              'attempt_count', 'error_category')}
+                          for row in status['history']])
+            else:
+                st.caption('No notification history yet.')
+        except Exception:
+            st.warning('Notification status unavailable.')

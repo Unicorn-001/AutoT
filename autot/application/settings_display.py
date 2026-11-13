@@ -136,7 +136,7 @@ def render_settings():
         result = {'schema_version': 1}
         for name, label in [('general','General'), ('scanner','Scanner'), ('strategies','Strategies'),
                             ('consensus','Consensus'), ('risk','Risk Management'), ('paper_trading','Paper Trading'),
-                            ('news','News Intelligence'), ('monitoring','Monitoring')]:
+                            ('news','News Intelligence'), ('monitoring','Monitoring'), ('notifications','Notifications')]:
             with st.expander(label, expanded=name in ('strategies','risk')):
                 if name == 'strategies':
                     result[name] = {}

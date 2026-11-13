@@ -85,7 +85,11 @@ class PaperMonitor:
     def cycle(self):
         LOGGER.info('Paper monitor cycle started')
         self.heartbeat('UPDATING')
-        self.service.update_positions(source='SCHEDULED')
+        try:
+            self.service.update_positions(source='SCHEDULED')
+        finally:
+            from autot.notifications import process
+            process(self.service.ledger)
         run = self.service.ledger.get_run(self.service.last_update_run_id)
         LOGGER.log(logging.WARNING if run['status'] in ('FAILED', 'PARTIAL') else logging.INFO,
                    'Paper monitor cycle completed: %s; checked=%s opened=%s closed=%s reviews=%s errors=%s',

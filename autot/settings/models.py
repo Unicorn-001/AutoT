@@ -196,6 +196,11 @@ class Monitoring(Model):
     daily_scan_enabled: bool = False
 
 
+class Notifications(Model):
+    notifications_enabled: bool = False
+    notification_channel: Literal['CONSOLE'] = 'CONSOLE'
+
+
 class Advanced(Model):
     execution_timeframe: Literal['5m'] = '5m'
     fill_model: Literal['NEXT_SESSION_OPEN'] = 'NEXT_SESSION_OPEN'
@@ -216,6 +221,7 @@ class AutoTSettings(Model):
     paper_trading: PaperTrading = Field(default_factory=PaperTrading)
     news: News = Field(default_factory=News)
     monitoring: Monitoring = Field(default_factory=Monitoring)
+    notifications: Notifications = Field(default_factory=Notifications)
     advanced: Advanced = Field(default_factory=Advanced)
 
 
