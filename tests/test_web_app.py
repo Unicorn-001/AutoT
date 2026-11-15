@@ -16,6 +16,11 @@ APP = str(Path(__file__).resolve().parents[1] / "web_app.py")
 @pytest.fixture(autouse=True)
 def scan_defaults(monkeypatch, tmp_path):
     monkeypatch.setenv("AUTOT_DATA_DIR", str(tmp_path / "runtime"))
+    from autot import daily_scanner
+    def inline_launch(request):
+        run = daily_scanner.DailyScanner().once(request)
+        return run['scan_run_id']
+    monkeypatch.setattr(daily_scanner, 'launch', inline_launch)
     def load(provider):
         d = provider.definition
         return UniverseResult(["AAA", "BBB"], "Fixture source", 2, 0,
@@ -30,7 +35,7 @@ def scan_defaults(monkeypatch, tmp_path):
 
 def test_web_scan_uses_service_and_keeps_results_between_reruns(monkeypatch):
     calls = []
-    row = {"symbol": "AAA", "rank": 1, "signal": "BUY", "score": 80.0}
+    row = {"symbol": "AAA", "rank": 1, "signal": "BUY", "score": 80.0, "trade_quality_score": 75.0}
 
     def scan(**kwargs):
         calls.append(kwargs)
@@ -68,7 +73,7 @@ def test_web_scan_uses_service_and_keeps_results_between_reruns(monkeypatch):
     import main as cli
     from autot.market_data.market_data_manager import MarketDataManager
     assert cli.MarketDataManager is MarketDataManager
-    assert calls[0]["batch_data_loader"] is cli.MarketDataManager.get_batch_stock_data
+    assert callable(calls[0]["batch_data_loader"])
     assert calls[0]["benchmark_data_loader"] is cli.MarketDataManager.get_stock_data
     assert calls[0]["universe_loader"]("sp500") == ["AAA", "BBB"]
     assert app.metric[0].value == "2"
@@ -80,13 +85,12 @@ def test_web_scan_uses_service_and_keeps_results_between_reruns(monkeypatch):
     assert len(app.dataframe) == 4
 
 
-def test_web_scan_failure_clears_previous_results(monkeypatch):
+def test_web_scan_failure_without_results_reports_failure(monkeypatch):
     def fail(**kwargs):
         raise ValueError("No batch data downloaded")
 
     monkeypatch.setattr(scanner_service, "run_scan", fail)
     app = AppTest.from_file(APP).run()
-    app.session_state["scan"] = {"outputs": {}, "settings": {}, "errors": []}
     app.button[0].click().run()
     assert not app.exception
     assert app.error[0].value == "Scan failed. Check the universe source, market-data settings and server logs."
@@ -117,7 +121,7 @@ def test_web_online_selection_injects_provider_and_runs_shared_scanner(monkeypat
         calls.append(provider)
         return UniverseResult(["AAA", "BRK-B"], "Nasdaq Trader", 2, 0)
 
-    def batch(*, symbols, period, interval):
+    def batch(*, symbols, period, interval, on_progress=None):
         assert symbols == ["AAA", "BRK-B"]
         return {}  # No price downloads or trading calculations in this UI test.
 
@@ -380,6 +384,6 @@ def test_index_total_failure_is_clear_and_private(monkeypatch):
     app = AppTest.from_file(APP).run()
     app.button[0].click().run()
     assert not app.exception
-    assert "no valid cached list" in app.error[0].value
+    assert "Scan failed" in app.error[0].value
     assert "sensitive-provider-marker" not in app.error[0].value
     assert "scan" not in app.session_state

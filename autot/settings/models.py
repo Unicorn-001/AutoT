@@ -194,6 +194,8 @@ class Monitoring(Model):
     paper_monitor_enabled: bool = False
     paper_update_interval_minutes: PositiveInt = 5
     daily_scan_enabled: bool = False
+    daily_scan_time_local: Annotated[str, Field(pattern=r"^([01][0-9]|2[0-3]):[0-5][0-9]$")] = "22:00"
+    daily_scan_quality_threshold: Annotated[float, Field(ge=70, le=100)] = 70.0
 
 
 class Notifications(Model):

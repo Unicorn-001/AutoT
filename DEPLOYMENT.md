@@ -161,6 +161,12 @@ AUTOT_DATA_DIR="$autot_test_root/runtime" "$autot_python" -m streamlit run "$aut
 
 Choose **Upload CSV**, browse to the displayed test directory's `upload.csv`, and run a
 scan. Also try a CSV without `symbol` and confirm validation stops it. Inspect the
-`runtime` directory: caches should be there, with no permanent upload copy. Stop with
+`runtime` directory: caches and scanner storage should be there. Uploaded CSV text
+is retained in the persisted scan request so detached workers can read it. Stop with
 Ctrl-C; the one-command data-root override does not alter subsequent local launches.
 The generated test directory may be deleted after the server exits.
+
+For independent scheduled research, supervise `python -m autot.daily_scanner` with
+saved daily scanning enabled and the same persistent `AUTOT_DATA_DIR` as the UI.
+The scanner needs a continuously running host, not an active Streamlit session.
+See [DAILY_SCANNER.md](DAILY_SCANNER.md) for timing, locks and restart limitations.

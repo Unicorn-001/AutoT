@@ -19,6 +19,47 @@ class SettingsConflict(ValueError):
     pass
 
 
+# Schema 1 additions outside the signed trading/profile configuration. Old
+# writers serialized every field they knew; schema_version stayed at 1.
+# Only these known defaulted additions may be absent from that historical shape.
+_SCHEMA_1_DEFAULT_ADDITIONS = (
+    ('settings', 'monitoring', 'paper_monitor_enabled'),
+    ('settings', 'monitoring', 'daily_scan_enabled'),
+    ('settings', 'monitoring', 'daily_scan_time_local'),
+    ('settings', 'monitoring', 'daily_scan_quality_threshold'),
+    ('settings', 'notifications'),
+    ('settings', 'notifications', 'notifications_enabled'),
+    ('settings', 'notifications', 'notification_channel'),
+)
+
+
+def validate_revision(version, payload, digest):
+    """Verify the original canonical payload before expanding runtime defaults.
+
+    Never re-sign history. Checking the raw hash also catches removed fields or
+    coercible changes that model normalization could otherwise hide. A second
+    comparison restricts historical shapes to documented schema-1 additions;
+    arbitrary omitted fields and noncanonical values remain invalid.
+    """
+    persisted = json.loads(payload)
+    if configuration_hash(persisted) != digest:
+        raise ValueError('Revision payload hash mismatch')
+    state = SettingsState.model_validate(persisted)
+    if state.settings_version != version:
+        raise ValueError('Revision version mismatch')
+    shape = state.model_dump(mode='json')
+    for path in _SCHEMA_1_DEFAULT_ADDITIONS:
+        original, normalized = persisted, shape
+        for key in path[:-1]:
+            original = original.get(key, {})
+            normalized = normalized.get(key, {})
+        if path[-1] not in original:
+            normalized.pop(path[-1], None)
+    if configuration_hash(shape) != digest:
+        raise ValueError('Revision canonical shape mismatch')
+    return state
+
+
 class SettingsStore:
     def __init__(self, path=None):
         self.path = Path(path) if path else data_dir() / 'settings' / 'settings.sqlite3'
@@ -61,16 +102,7 @@ class SettingsStore:
         invalid = False
         for version, payload, digest in db.execute('SELECT version,payload,hash FROM revisions ORDER BY version DESC'):
             try:
-                state = SettingsState.model_validate_json(payload)
-                persisted_shape = state.model_dump(mode='json')
-                # Old signed revisions predate the default-OFF monitor field.
-                # Verify their original shape without rewriting append-only history.
-                if 'paper_monitor_enabled' not in json.loads(payload).get('settings', {}).get('monitoring', {}):
-                    persisted_shape['settings']['monitoring'].pop('paper_monitor_enabled')
-                if 'notifications' not in json.loads(payload).get('settings', {}):
-                    persisted_shape['settings'].pop('notifications')
-                if configuration_hash(persisted_shape) != digest or state.settings_version != version:
-                    raise ValueError('Revision integrity mismatch')
+                state = validate_revision(version, payload, digest)
                 if invalid:
                     self._warn('Invalid settings revision detected. Using the last valid configuration; review Settings before trading.')
                 return state

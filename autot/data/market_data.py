@@ -54,7 +54,7 @@ def download_stock_data(symbol: str, period: str = "1y", interval: str = "1d") -
 
 
 def download_batch_stock_data(
-    symbols: list[str], period: str = "1y", interval: str = "1d", batch_size: int = 50,
+    symbols: list[str], period: str = "1y", interval: str = "1d", batch_size: int = 50, on_progress=None,
 ) -> dict[str, pd.DataFrame]:
     """Download with owned worker cleanup and bounded infrastructure-aware retries."""
     if batch_size <= 0:
@@ -63,6 +63,10 @@ def download_batch_stock_data(
     yahoo_symbols = list(yahoo_to_autot)
     stock_data = {}
     retry_symbols = []
+    failed = 0
+    def progress():
+        if on_progress:
+            on_progress(dict(symbols_fetched=len(stock_data) + failed, symbols_failed=failed))
 
     def accept(symbol, result):
         if result.error is not None:
@@ -91,15 +95,19 @@ def download_batch_stock_data(
                     partial_data=stock_data.copy(),
                 )
             retry_symbols.extend(missing)
+            progress()
 
         for symbol in dict.fromkeys(retry_symbols):
             results = pool.download([symbol], period, interval)
             _check_infrastructure(results, stock_data)
             if not accept(symbol, results[symbol]):
+                failed += 1
                 LOGGER.warning(
                     "Insufficient/unverified market data for %s after one retry: %s",
                     yahoo_to_autot[symbol], results[symbol].error or "fewer than 50 usable rows",
                 )
+
+            progress()
 
     if not stock_data:
         raise ValueError("No batch data downloaded.")

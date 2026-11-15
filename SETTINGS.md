@@ -46,7 +46,7 @@ external `AUTOT_DATA_DIR` is the operator's responsibility to back up/protect.
   each 10,000 in its own currency. Existing capital/balances are never changed.
 - **News:** enabled, general news, official disclosures, recent window days (7),
   maximum articles (50). Placeholders only: no effect until the other branch merges.
-- **Monitoring:** paper monitor enabled (false), update interval (5 minutes), daily scan enabled (false; reserved).
+- **Monitoring:** paper monitor enabled (false), update interval (5 minutes), daily scan enabled (false), market-local scan time (22:00), research quality filter (70).
   Enable the external Paper Monitor explicitly; saving settings does not start a process.
 - **Advanced:** read-only 5m execution, next-session-open fills, STOP-first same-bar
   ambiguity, SessionCalendar, Yahoo data, PAPER execution and ledger path policy.
@@ -240,7 +240,7 @@ An explicitly saved true value enables the external monitor to run; saving this
 setting does not launch a process. The existing positive integer
 `paper_update_interval_minutes` controls the cadence (default 5). No extra
 run-only-with-trades switch is needed: empty passes always avoid provider work.
-`daily_scan_enabled` remains reserved and never starts Scanner.
+`daily_scan_enabled` enables the independent daily scanner service; start it with `python -m autot.daily_scanner`. Saving settings does not launch that service.
 
 Start `python -m autot.paper_monitor` separately using the same AUTOT_DATA_DIR as
 the UI; `--once` requires the enabled flag too. `--status` shows configured state
@@ -249,3 +249,18 @@ while waiting, or after the current pass. Restart the process after re-enabling.
 Old settings hashes remain verifiable without rewriting revision history.
 Monitoring changes do not alter strategy profiles or captured trade snapshots.
 See [PAPER_MONITOR.md](PAPER_MONITOR.md) for operation and limitations.
+
+## Automatic daily scanner
+
+Monitoring now supports `daily_scan_enabled` (default false),
+`daily_scan_time_local` (default 22:00 in the selected market's timezone), and
+`daily_scan_quality_threshold` (70–100, default 70). The daily job uses saved Scanner
+market/index, history period, interval and top-N, plus the active strategy profile.
+These settings do not start a daemon from the Settings page. See [DAILY_SCANNER.md](DAILY_SCANNER.md)
+for the independent service, completed-session guard and CLI.
+
+Historical schema-1 revisions are verified against their original canonical payload
+hash before runtime defaults are added. Only explicitly allowlisted monitoring and
+notification additions may be absent. Version, schema, profile integrity and canonical
+shape checks still reject tampering or unrelated missing fields. Loading does not
+rewrite historical payloads or hashes; a new save appends the current format.

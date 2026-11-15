@@ -60,9 +60,12 @@ def test_batch_normalization_shapes_and_one_isolated_retry(monkeypatch):
         return pd.concat({symbol: prices()}, axis=1).swaplevel(axis=1)
 
     monkeypatch.setattr(downloads.yf, "download", download)
+    progress = []
     result = market_data.download_batch_stock_data(
-        ["BF.B", "BF.B", "BRK.B", "BBB", "CCC"], "5y", "1d", batch_size=2,
+        ["BF.B", "BF.B", "BRK.B", "BBB", "CCC"], "5y", "1d", batch_size=2, on_progress=progress.append,
     )
+    assert progress[0] == dict(symbols_fetched=2, symbols_failed=0)
+    assert progress[-1] == dict(symbols_fetched=4, symbols_failed=1)
     assert counts == {"BF-B": 1, "BRK-B": 1, "BBB": 2, "CCC": 2}
     assert list(result) == ["BF.B", "BRK.B", "BBB"]
     for symbol, data in result.items():

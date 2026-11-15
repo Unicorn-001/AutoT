@@ -69,3 +69,9 @@ Email, Telegram, and push/webhook implementations can implement `NotificationCha
 ## Verification
 
 All tests inherit isolated `AUTOT_DATA_DIR` fixtures. Notification tests cover lifecycle mapping, health recovery, idempotent projection, retry, dispatcher serialization, console output, transaction isolation, legacy installation boundaries, disabled startup, and signed-settings compatibility. Existing paper-monitor, strategy-analysis, portfolio-risk, and full-suite tests remain applicable. Do not run test commands or CLI probes against live paper data.
+
+Daily Scanner V1 reuses the outbox schema, console adapter and delivery retries for
+`DAILY_SCAN_COMPLETED`, `DAILY_SCAN_PARTIAL` and `DAILY_SCAN_FAILED`. Its outbox is
+in the independent scanner database; scanner status reports its delivery history.
+See [DAILY_SCANNER.md](DAILY_SCANNER.md). Scan notification processing never opens
+the paper ledger.

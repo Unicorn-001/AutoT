@@ -87,9 +87,27 @@ def run_scan(
             if on_error is not None:
                 on_error(symbol, error)
 
+    successful = 0
+    failed_count = len(symbols) - len(batch_data)
+    original_error = analysis_error
+    def progress_success(count, total, symbol):
+        nonlocal successful
+        successful = count
+        progress()
+        if on_success:
+            on_success(count, total, symbol)
+    def progress_error(symbol, error):
+        nonlocal failed_count
+        failed_count += 1
+        progress()
+        if original_error:
+            original_error(symbol, error)
+    def progress():
+        if on_stage:
+            on_stage('analysing', dict(symbols_fetched=len(symbols),
+                     symbols_analyzed=successful, symbols_failed=failed_count))
     try:
-        if on_stage is not None:
-            on_stage("analysing", {})
+        progress()
         results, trade_decisions = run_batch_analysis(
             symbols,
             batch_data,
@@ -97,8 +115,8 @@ def run_scan(
             tracker,
             analyse_func,
             max_workers=max_workers,
-            on_success=on_success,
-            on_error=analysis_error,
+            on_success=progress_success,
+            on_error=progress_error,
         )
     finally:
         tracker.stop("Analyse Stocks")

@@ -34,6 +34,11 @@ def initialize(db):
     db.execute('''CREATE TABLE IF NOT EXISTS notification_runs (run_id TEXT PRIMARY KEY)''')
     db.execute('''CREATE TABLE IF NOT EXISTS notification_health (
         scope TEXT PRIMARY KEY, failed INTEGER NOT NULL)''')
+    initialize_outbox(db)
+
+
+def initialize_outbox(db):
+    """Shared research/trading delivery schema; no paper ledger dependency."""
     db.execute('''CREATE TABLE IF NOT EXISTS notification_outbox (
         notification_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, created_at TEXT NOT NULL,
         trade_id TEXT, symbol TEXT, currency TEXT, payload_json TEXT NOT NULL,
@@ -117,6 +122,14 @@ def message(notification):
                               f"Target: {p.get('take_profit')}"])
             else:
                 lines.extend([f"Exit: {p.get('exit_price')}", f"Realized P&L: {p.get('realized_pnl')} {notification['currency']}"])
+    elif kind.startswith('DAILY_SCAN_'):
+        lines = ['AutoT ' + kind.replace('_', ' ').lower(),
+                 f"Market: {p.get('market')}", f"Universe: {p.get('universe')}",
+                 f"Analyzed: {p.get('analyzed')}", f"Trade opportunities: {p.get('opportunities')}"]
+        if p.get('top_opportunity'):
+            lines.append('Top opportunity: ' + p['top_opportunity'])
+        if p.get('error_category'):
+            lines.append('Error category: ' + p['error_category'])
     else:
         lines = [kind.replace('_', ' ').capitalize()]
         if p.get('provider'):

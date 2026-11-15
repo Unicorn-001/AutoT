@@ -79,3 +79,11 @@ Infrastructure exceptions retain usable datasets in `partial_data` for explicit
 recovery; the scanner reports failure rather than silently ranking partial data.
 These lifecycle changes address demonstrated resource retention; the earlier
 fatal Streamlit failure has not yet been conclusively reproduced.
+
+### Automatic Daily Scanner V1
+
+Scanner UI jobs now run in detached processes and persist results across navigation
+and restarts. Scheduled research runs independently with `python -m autot.daily_scanner`;
+use `--once` for a manual saved-configuration scan and `--status` for diagnostics.
+Scheduling is disabled by default and never creates trades. See
+[DAILY_SCANNER.md](DAILY_SCANNER.md) for settings, market-local timing and deployment.

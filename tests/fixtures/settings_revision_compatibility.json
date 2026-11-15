@@ -1,0 +1,1987 @@
+{
+  "before_monitor": {
+    "source": "e4926c0",
+    "payload": {
+      "settings_version": 1,
+      "settings": {
+        "schema_version": 1,
+        "general": {
+          "mode": "FORWARD_TEST"
+        },
+        "scanner": {
+          "country": "United States",
+          "index": "nasdaq100",
+          "history_period": "5y",
+          "interval": "1d",
+          "top_ranked_count": 10,
+          "top_trade_opportunity_count": null
+        },
+        "strategies": {
+          "EMA_RSI": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 1.0
+            },
+            "fast": 20,
+            "slow": 50,
+            "rsi_period": 14,
+            "buy_threshold": 50.0,
+            "sell_threshold": 45.0
+          },
+          "MACD": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 1.0
+            },
+            "fast": 12,
+            "slow": 26,
+            "signal": 9
+          },
+          "BOLLINGER": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 0.9,
+              "strong_downtrend": 0.9,
+              "sideways_or_weak_trend": 1.2
+            },
+            "period": 20,
+            "deviation": 2.0
+          },
+          "BREAKOUT": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.1,
+              "strong_downtrend": 1.1,
+              "sideways_or_weak_trend": 0.85
+            },
+            "lookback": 20
+          },
+          "SUPERTREND": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 0.9
+            },
+            "atr_period": 10,
+            "multiplier": 3.0
+          },
+          "ADX": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.0
+            },
+            "period": 14,
+            "threshold": 25.0
+          },
+          "VOLUME_SPIKE": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.1
+            },
+            "period": 20,
+            "threshold": 2.0
+          },
+          "MOMENTUM": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.15,
+              "strong_downtrend": 1.15,
+              "sideways_or_weak_trend": 0.9
+            },
+            "period": 10
+          },
+          "ATR": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.0
+            },
+            "period": 14,
+            "average_period": 20
+          },
+          "STOCHASTIC": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 0.9,
+              "strong_downtrend": 0.9,
+              "sideways_or_weak_trend": 1.2
+            },
+            "period": 14,
+            "smooth_period": 3,
+            "oversold": 20.0,
+            "overbought": 80.0
+          }
+        },
+        "consensus": {
+          "minimum_confidence": 55.0,
+          "minimum_agreement": 0.0
+        },
+        "risk": {
+          "risk_per_trade_percent": 0.5,
+          "maximum_position_percent": 30.0,
+          "maximum_simultaneous_positions": 5,
+          "maximum_total_portfolio_risk_percent": 2.5,
+          "minimum_risk_reward": 0.0,
+          "maximum_new_trades_per_day": 5,
+          "enforce_position_limit": false,
+          "enforce_positions_limit": false,
+          "enforce_portfolio_risk_limit": false,
+          "enforce_daily_trade_limit": false,
+          "allow_buy": true,
+          "allow_sell": true,
+          "manual_confirmation_required": true
+        },
+        "paper_trading": {
+          "usd_base_capital": 10000.0,
+          "gbp_base_capital": 10000.0,
+          "inr_base_capital": 10000.0
+        },
+        "news": {
+          "enabled": false,
+          "general_news_enabled": false,
+          "official_disclosures_enabled": false,
+          "recent_window_days": 7,
+          "max_articles": 50
+        },
+        "monitoring": {
+          "paper_update_interval_minutes": 15,
+          "daily_scan_enabled": false
+        },
+        "advanced": {
+          "execution_timeframe": "5m",
+          "fill_model": "NEXT_SESSION_OPEN",
+          "same_bar_rule": "STOP_FIRST",
+          "calendar_model": "SessionCalendar",
+          "market_data_provider": "Yahoo",
+          "execution_provider": "PAPER",
+          "database_path": "AUTOT_DATA_DIR/paper_trading/ledger.sqlite3"
+        }
+      },
+      "profile": {
+        "profile_id": "compatibility-fixture",
+        "profile_name": "Legacy custom",
+        "profile_version": 2,
+        "created_at": "2026-10-25T00:00:00+00:00",
+        "updated_at": "2026-10-26T00:00:00+00:00",
+        "parent_profile_id": null,
+        "configuration_hash": "9cce32c7f01d95bb7e1b1f2f19bffe6ce8ca22f9f321cac456bf1af62df140dd",
+        "configuration": {
+          "strategies": {
+            "EMA_RSI": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 1.0
+              },
+              "fast": 20,
+              "slow": 50,
+              "rsi_period": 14,
+              "buy_threshold": 50.0,
+              "sell_threshold": 45.0
+            },
+            "MACD": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 1.0
+              },
+              "fast": 12,
+              "slow": 26,
+              "signal": 9
+            },
+            "BOLLINGER": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 0.9,
+                "strong_downtrend": 0.9,
+                "sideways_or_weak_trend": 1.2
+              },
+              "period": 20,
+              "deviation": 2.0
+            },
+            "BREAKOUT": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.1,
+                "strong_downtrend": 1.1,
+                "sideways_or_weak_trend": 0.85
+              },
+              "lookback": 20
+            },
+            "SUPERTREND": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 0.9
+              },
+              "atr_period": 10,
+              "multiplier": 3.0
+            },
+            "ADX": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.0
+              },
+              "period": 14,
+              "threshold": 25.0
+            },
+            "VOLUME_SPIKE": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.1
+              },
+              "period": 20,
+              "threshold": 2.0
+            },
+            "MOMENTUM": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.15,
+                "strong_downtrend": 1.15,
+                "sideways_or_weak_trend": 0.9
+              },
+              "period": 10
+            },
+            "ATR": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.0
+              },
+              "period": 14,
+              "average_period": 20
+            },
+            "STOCHASTIC": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 0.9,
+                "strong_downtrend": 0.9,
+                "sideways_or_weak_trend": 1.2
+              },
+              "period": 14,
+              "smooth_period": 3,
+              "oversold": 20.0,
+              "overbought": 80.0
+            }
+          },
+          "consensus": {
+            "minimum_confidence": 55.0,
+            "minimum_agreement": 0.0
+          },
+          "risk": {
+            "risk_per_trade_percent": 0.5,
+            "maximum_position_percent": 30.0,
+            "maximum_simultaneous_positions": 5,
+            "maximum_total_portfolio_risk_percent": 2.5,
+            "minimum_risk_reward": 0.0,
+            "maximum_new_trades_per_day": 5,
+            "enforce_position_limit": false,
+            "enforce_positions_limit": false,
+            "enforce_portfolio_risk_limit": false,
+            "enforce_daily_trade_limit": false,
+            "allow_buy": true,
+            "allow_sell": true,
+            "manual_confirmation_required": true
+          }
+        },
+        "builtin": false
+      }
+    },
+    "hash": "e331be2fdab0988dfc4f752ef558e0b9e40c33322f2dc31f35efa7d429d91d3d"
+  },
+  "before_notifications": {
+    "source": "0092bac",
+    "payload": {
+      "settings_version": 2,
+      "settings": {
+        "schema_version": 1,
+        "general": {
+          "mode": "FORWARD_TEST"
+        },
+        "scanner": {
+          "country": "United States",
+          "index": "nasdaq100",
+          "history_period": "5y",
+          "interval": "1d",
+          "top_ranked_count": 10,
+          "top_trade_opportunity_count": null
+        },
+        "strategies": {
+          "EMA_RSI": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 1.0
+            },
+            "fast": 20,
+            "slow": 50,
+            "rsi_period": 14,
+            "buy_threshold": 50.0,
+            "sell_threshold": 45.0
+          },
+          "MACD": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 1.0
+            },
+            "fast": 12,
+            "slow": 26,
+            "signal": 9
+          },
+          "BOLLINGER": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 0.9,
+              "strong_downtrend": 0.9,
+              "sideways_or_weak_trend": 1.2
+            },
+            "period": 20,
+            "deviation": 2.0
+          },
+          "BREAKOUT": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.1,
+              "strong_downtrend": 1.1,
+              "sideways_or_weak_trend": 0.85
+            },
+            "lookback": 20
+          },
+          "SUPERTREND": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 0.9
+            },
+            "atr_period": 10,
+            "multiplier": 3.0
+          },
+          "ADX": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.0
+            },
+            "period": 14,
+            "threshold": 25.0
+          },
+          "VOLUME_SPIKE": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.1
+            },
+            "period": 20,
+            "threshold": 2.0
+          },
+          "MOMENTUM": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.15,
+              "strong_downtrend": 1.15,
+              "sideways_or_weak_trend": 0.9
+            },
+            "period": 10
+          },
+          "ATR": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.0
+            },
+            "period": 14,
+            "average_period": 20
+          },
+          "STOCHASTIC": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 0.9,
+              "strong_downtrend": 0.9,
+              "sideways_or_weak_trend": 1.2
+            },
+            "period": 14,
+            "smooth_period": 3,
+            "oversold": 20.0,
+            "overbought": 80.0
+          }
+        },
+        "consensus": {
+          "minimum_confidence": 55.0,
+          "minimum_agreement": 0.0
+        },
+        "risk": {
+          "risk_per_trade_percent": 0.5,
+          "maximum_position_percent": 30.0,
+          "maximum_simultaneous_positions": 5,
+          "maximum_total_portfolio_risk_percent": 2.5,
+          "minimum_risk_reward": 0.0,
+          "maximum_new_trades_per_day": 5,
+          "enforce_position_limit": false,
+          "enforce_positions_limit": false,
+          "enforce_portfolio_risk_limit": false,
+          "enforce_daily_trade_limit": false,
+          "allow_buy": true,
+          "allow_sell": true,
+          "manual_confirmation_required": true
+        },
+        "paper_trading": {
+          "usd_base_capital": 10000.0,
+          "gbp_base_capital": 10000.0,
+          "inr_base_capital": 10000.0
+        },
+        "news": {
+          "enabled": false,
+          "general_news_enabled": false,
+          "official_disclosures_enabled": false,
+          "recent_window_days": 7,
+          "max_articles": 50
+        },
+        "monitoring": {
+          "paper_monitor_enabled": true,
+          "paper_update_interval_minutes": 15,
+          "daily_scan_enabled": false
+        },
+        "advanced": {
+          "execution_timeframe": "5m",
+          "fill_model": "NEXT_SESSION_OPEN",
+          "same_bar_rule": "STOP_FIRST",
+          "calendar_model": "SessionCalendar",
+          "market_data_provider": "Yahoo",
+          "execution_provider": "PAPER",
+          "database_path": "AUTOT_DATA_DIR/paper_trading/ledger.sqlite3"
+        }
+      },
+      "profile": {
+        "profile_id": "compatibility-fixture",
+        "profile_name": "Legacy custom",
+        "profile_version": 2,
+        "created_at": "2026-10-25T00:00:00+00:00",
+        "updated_at": "2026-10-26T00:00:00+00:00",
+        "parent_profile_id": null,
+        "configuration_hash": "9cce32c7f01d95bb7e1b1f2f19bffe6ce8ca22f9f321cac456bf1af62df140dd",
+        "configuration": {
+          "strategies": {
+            "EMA_RSI": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 1.0
+              },
+              "fast": 20,
+              "slow": 50,
+              "rsi_period": 14,
+              "buy_threshold": 50.0,
+              "sell_threshold": 45.0
+            },
+            "MACD": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 1.0
+              },
+              "fast": 12,
+              "slow": 26,
+              "signal": 9
+            },
+            "BOLLINGER": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 0.9,
+                "strong_downtrend": 0.9,
+                "sideways_or_weak_trend": 1.2
+              },
+              "period": 20,
+              "deviation": 2.0
+            },
+            "BREAKOUT": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.1,
+                "strong_downtrend": 1.1,
+                "sideways_or_weak_trend": 0.85
+              },
+              "lookback": 20
+            },
+            "SUPERTREND": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 0.9
+              },
+              "atr_period": 10,
+              "multiplier": 3.0
+            },
+            "ADX": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.0
+              },
+              "period": 14,
+              "threshold": 25.0
+            },
+            "VOLUME_SPIKE": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.1
+              },
+              "period": 20,
+              "threshold": 2.0
+            },
+            "MOMENTUM": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.15,
+                "strong_downtrend": 1.15,
+                "sideways_or_weak_trend": 0.9
+              },
+              "period": 10
+            },
+            "ATR": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.0
+              },
+              "period": 14,
+              "average_period": 20
+            },
+            "STOCHASTIC": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 0.9,
+                "strong_downtrend": 0.9,
+                "sideways_or_weak_trend": 1.2
+              },
+              "period": 14,
+              "smooth_period": 3,
+              "oversold": 20.0,
+              "overbought": 80.0
+            }
+          },
+          "consensus": {
+            "minimum_confidence": 55.0,
+            "minimum_agreement": 0.0
+          },
+          "risk": {
+            "risk_per_trade_percent": 0.5,
+            "maximum_position_percent": 30.0,
+            "maximum_simultaneous_positions": 5,
+            "maximum_total_portfolio_risk_percent": 2.5,
+            "minimum_risk_reward": 0.0,
+            "maximum_new_trades_per_day": 5,
+            "enforce_position_limit": false,
+            "enforce_positions_limit": false,
+            "enforce_portfolio_risk_limit": false,
+            "enforce_daily_trade_limit": false,
+            "allow_buy": true,
+            "allow_sell": true,
+            "manual_confirmation_required": true
+          }
+        },
+        "builtin": false
+      }
+    },
+    "hash": "ff5c6595735d323c32fde211b40c7b8ce0180e569031405dc521386a9526aaa3"
+  },
+  "before_daily_scanner": {
+    "source": "98a1cbd",
+    "payload": {
+      "settings_version": 3,
+      "settings": {
+        "schema_version": 1,
+        "general": {
+          "mode": "FORWARD_TEST"
+        },
+        "scanner": {
+          "country": "United States",
+          "index": "nasdaq100",
+          "history_period": "5y",
+          "interval": "1d",
+          "top_ranked_count": 10,
+          "top_trade_opportunity_count": null
+        },
+        "strategies": {
+          "EMA_RSI": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 1.0
+            },
+            "fast": 20,
+            "slow": 50,
+            "rsi_period": 14,
+            "buy_threshold": 50.0,
+            "sell_threshold": 45.0
+          },
+          "MACD": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 1.0
+            },
+            "fast": 12,
+            "slow": 26,
+            "signal": 9
+          },
+          "BOLLINGER": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 0.9,
+              "strong_downtrend": 0.9,
+              "sideways_or_weak_trend": 1.2
+            },
+            "period": 20,
+            "deviation": 2.0
+          },
+          "BREAKOUT": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.1,
+              "strong_downtrend": 1.1,
+              "sideways_or_weak_trend": 0.85
+            },
+            "lookback": 20
+          },
+          "SUPERTREND": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 0.9
+            },
+            "atr_period": 10,
+            "multiplier": 3.0
+          },
+          "ADX": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.0
+            },
+            "period": 14,
+            "threshold": 25.0
+          },
+          "VOLUME_SPIKE": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.1
+            },
+            "period": 20,
+            "threshold": 2.0
+          },
+          "MOMENTUM": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.15,
+              "strong_downtrend": 1.15,
+              "sideways_or_weak_trend": 0.9
+            },
+            "period": 10
+          },
+          "ATR": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.0
+            },
+            "period": 14,
+            "average_period": 20
+          },
+          "STOCHASTIC": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 0.9,
+              "strong_downtrend": 0.9,
+              "sideways_or_weak_trend": 1.2
+            },
+            "period": 14,
+            "smooth_period": 3,
+            "oversold": 20.0,
+            "overbought": 80.0
+          }
+        },
+        "consensus": {
+          "minimum_confidence": 55.0,
+          "minimum_agreement": 0.0
+        },
+        "risk": {
+          "risk_per_trade_percent": 0.5,
+          "maximum_position_percent": 30.0,
+          "maximum_simultaneous_positions": 5,
+          "maximum_total_portfolio_risk_percent": 2.5,
+          "minimum_risk_reward": 0.0,
+          "maximum_new_trades_per_day": 5,
+          "enforce_position_limit": false,
+          "enforce_positions_limit": false,
+          "enforce_portfolio_risk_limit": false,
+          "enforce_daily_trade_limit": false,
+          "allow_buy": true,
+          "allow_sell": true,
+          "manual_confirmation_required": true
+        },
+        "paper_trading": {
+          "usd_base_capital": 10000.0,
+          "gbp_base_capital": 10000.0,
+          "inr_base_capital": 10000.0
+        },
+        "news": {
+          "enabled": false,
+          "general_news_enabled": false,
+          "official_disclosures_enabled": false,
+          "recent_window_days": 7,
+          "max_articles": 50
+        },
+        "monitoring": {
+          "paper_monitor_enabled": true,
+          "paper_update_interval_minutes": 15,
+          "daily_scan_enabled": false
+        },
+        "notifications": {
+          "notifications_enabled": true,
+          "notification_channel": "CONSOLE"
+        },
+        "advanced": {
+          "execution_timeframe": "5m",
+          "fill_model": "NEXT_SESSION_OPEN",
+          "same_bar_rule": "STOP_FIRST",
+          "calendar_model": "SessionCalendar",
+          "market_data_provider": "Yahoo",
+          "execution_provider": "PAPER",
+          "database_path": "AUTOT_DATA_DIR/paper_trading/ledger.sqlite3"
+        }
+      },
+      "profile": {
+        "profile_id": "compatibility-fixture",
+        "profile_name": "Legacy custom",
+        "profile_version": 2,
+        "created_at": "2026-10-25T00:00:00+00:00",
+        "updated_at": "2026-10-26T00:00:00+00:00",
+        "parent_profile_id": null,
+        "configuration_hash": "9cce32c7f01d95bb7e1b1f2f19bffe6ce8ca22f9f321cac456bf1af62df140dd",
+        "configuration": {
+          "strategies": {
+            "EMA_RSI": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 1.0
+              },
+              "fast": 20,
+              "slow": 50,
+              "rsi_period": 14,
+              "buy_threshold": 50.0,
+              "sell_threshold": 45.0
+            },
+            "MACD": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 1.0
+              },
+              "fast": 12,
+              "slow": 26,
+              "signal": 9
+            },
+            "BOLLINGER": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 0.9,
+                "strong_downtrend": 0.9,
+                "sideways_or_weak_trend": 1.2
+              },
+              "period": 20,
+              "deviation": 2.0
+            },
+            "BREAKOUT": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.1,
+                "strong_downtrend": 1.1,
+                "sideways_or_weak_trend": 0.85
+              },
+              "lookback": 20
+            },
+            "SUPERTREND": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 0.9
+              },
+              "atr_period": 10,
+              "multiplier": 3.0
+            },
+            "ADX": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.0
+              },
+              "period": 14,
+              "threshold": 25.0
+            },
+            "VOLUME_SPIKE": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.1
+              },
+              "period": 20,
+              "threshold": 2.0
+            },
+            "MOMENTUM": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.15,
+                "strong_downtrend": 1.15,
+                "sideways_or_weak_trend": 0.9
+              },
+              "period": 10
+            },
+            "ATR": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.0
+              },
+              "period": 14,
+              "average_period": 20
+            },
+            "STOCHASTIC": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 0.9,
+                "strong_downtrend": 0.9,
+                "sideways_or_weak_trend": 1.2
+              },
+              "period": 14,
+              "smooth_period": 3,
+              "oversold": 20.0,
+              "overbought": 80.0
+            }
+          },
+          "consensus": {
+            "minimum_confidence": 55.0,
+            "minimum_agreement": 0.0
+          },
+          "risk": {
+            "risk_per_trade_percent": 0.5,
+            "maximum_position_percent": 30.0,
+            "maximum_simultaneous_positions": 5,
+            "maximum_total_portfolio_risk_percent": 2.5,
+            "minimum_risk_reward": 0.0,
+            "maximum_new_trades_per_day": 5,
+            "enforce_position_limit": false,
+            "enforce_positions_limit": false,
+            "enforce_portfolio_risk_limit": false,
+            "enforce_daily_trade_limit": false,
+            "allow_buy": true,
+            "allow_sell": true,
+            "manual_confirmation_required": true
+          }
+        },
+        "builtin": false
+      }
+    },
+    "hash": "e914e7104a17022f6c4f4dfface56176a37f009a64b867616689039e3deeae55"
+  },
+  "current": {
+    "source": "current schema 1",
+    "payload": {
+      "settings_version": 4,
+      "settings": {
+        "schema_version": 1,
+        "general": {
+          "mode": "FORWARD_TEST"
+        },
+        "scanner": {
+          "country": "United States",
+          "index": "nasdaq100",
+          "history_period": "5y",
+          "interval": "1d",
+          "top_ranked_count": 10,
+          "top_trade_opportunity_count": null
+        },
+        "strategies": {
+          "EMA_RSI": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 1.0
+            },
+            "fast": 20,
+            "slow": 50,
+            "rsi_period": 14,
+            "buy_threshold": 50.0,
+            "sell_threshold": 45.0
+          },
+          "MACD": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 1.0
+            },
+            "fast": 12,
+            "slow": 26,
+            "signal": 9
+          },
+          "BOLLINGER": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 0.9,
+              "strong_downtrend": 0.9,
+              "sideways_or_weak_trend": 1.2
+            },
+            "period": 20,
+            "deviation": 2.0
+          },
+          "BREAKOUT": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.1,
+              "strong_downtrend": 1.1,
+              "sideways_or_weak_trend": 0.85
+            },
+            "lookback": 20
+          },
+          "SUPERTREND": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 0.9
+            },
+            "atr_period": 10,
+            "multiplier": 3.0
+          },
+          "ADX": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.0
+            },
+            "period": 14,
+            "threshold": 25.0
+          },
+          "VOLUME_SPIKE": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.1
+            },
+            "period": 20,
+            "threshold": 2.0
+          },
+          "MOMENTUM": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.15,
+              "strong_downtrend": 1.15,
+              "sideways_or_weak_trend": 0.9
+            },
+            "period": 10
+          },
+          "ATR": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.0
+            },
+            "period": 14,
+            "average_period": 20
+          },
+          "STOCHASTIC": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 0.9,
+              "strong_downtrend": 0.9,
+              "sideways_or_weak_trend": 1.2
+            },
+            "period": 14,
+            "smooth_period": 3,
+            "oversold": 20.0,
+            "overbought": 80.0
+          }
+        },
+        "consensus": {
+          "minimum_confidence": 55.0,
+          "minimum_agreement": 0.0
+        },
+        "risk": {
+          "risk_per_trade_percent": 0.5,
+          "maximum_position_percent": 30.0,
+          "maximum_simultaneous_positions": 5,
+          "maximum_total_portfolio_risk_percent": 2.5,
+          "minimum_risk_reward": 0.0,
+          "maximum_new_trades_per_day": 5,
+          "enforce_position_limit": false,
+          "enforce_positions_limit": false,
+          "enforce_portfolio_risk_limit": false,
+          "enforce_daily_trade_limit": false,
+          "allow_buy": true,
+          "allow_sell": true,
+          "manual_confirmation_required": true
+        },
+        "paper_trading": {
+          "usd_base_capital": 10000.0,
+          "gbp_base_capital": 10000.0,
+          "inr_base_capital": 10000.0
+        },
+        "news": {
+          "enabled": false,
+          "general_news_enabled": false,
+          "official_disclosures_enabled": false,
+          "recent_window_days": 7,
+          "max_articles": 50
+        },
+        "monitoring": {
+          "paper_monitor_enabled": true,
+          "paper_update_interval_minutes": 15,
+          "daily_scan_enabled": false,
+          "daily_scan_time_local": "22:00",
+          "daily_scan_quality_threshold": 70.0
+        },
+        "notifications": {
+          "notifications_enabled": true,
+          "notification_channel": "CONSOLE"
+        },
+        "advanced": {
+          "execution_timeframe": "5m",
+          "fill_model": "NEXT_SESSION_OPEN",
+          "same_bar_rule": "STOP_FIRST",
+          "calendar_model": "SessionCalendar",
+          "market_data_provider": "Yahoo",
+          "execution_provider": "PAPER",
+          "database_path": "AUTOT_DATA_DIR/paper_trading/ledger.sqlite3"
+        }
+      },
+      "profile": {
+        "profile_id": "compatibility-fixture",
+        "profile_name": "Legacy custom",
+        "profile_version": 2,
+        "created_at": "2026-10-25T00:00:00+00:00",
+        "updated_at": "2026-10-26T00:00:00+00:00",
+        "parent_profile_id": null,
+        "configuration_hash": "9cce32c7f01d95bb7e1b1f2f19bffe6ce8ca22f9f321cac456bf1af62df140dd",
+        "configuration": {
+          "strategies": {
+            "EMA_RSI": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 1.0
+              },
+              "fast": 20,
+              "slow": 50,
+              "rsi_period": 14,
+              "buy_threshold": 50.0,
+              "sell_threshold": 45.0
+            },
+            "MACD": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 1.0
+              },
+              "fast": 12,
+              "slow": 26,
+              "signal": 9
+            },
+            "BOLLINGER": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 0.9,
+                "strong_downtrend": 0.9,
+                "sideways_or_weak_trend": 1.2
+              },
+              "period": 20,
+              "deviation": 2.0
+            },
+            "BREAKOUT": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.1,
+                "strong_downtrend": 1.1,
+                "sideways_or_weak_trend": 0.85
+              },
+              "lookback": 20
+            },
+            "SUPERTREND": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 0.9
+              },
+              "atr_period": 10,
+              "multiplier": 3.0
+            },
+            "ADX": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.0
+              },
+              "period": 14,
+              "threshold": 25.0
+            },
+            "VOLUME_SPIKE": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.1
+              },
+              "period": 20,
+              "threshold": 2.0
+            },
+            "MOMENTUM": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.15,
+                "strong_downtrend": 1.15,
+                "sideways_or_weak_trend": 0.9
+              },
+              "period": 10
+            },
+            "ATR": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.0
+              },
+              "period": 14,
+              "average_period": 20
+            },
+            "STOCHASTIC": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 0.9,
+                "strong_downtrend": 0.9,
+                "sideways_or_weak_trend": 1.2
+              },
+              "period": 14,
+              "smooth_period": 3,
+              "oversold": 20.0,
+              "overbought": 80.0
+            }
+          },
+          "consensus": {
+            "minimum_confidence": 55.0,
+            "minimum_agreement": 0.0
+          },
+          "risk": {
+            "risk_per_trade_percent": 0.5,
+            "maximum_position_percent": 30.0,
+            "maximum_simultaneous_positions": 5,
+            "maximum_total_portfolio_risk_percent": 2.5,
+            "minimum_risk_reward": 0.0,
+            "maximum_new_trades_per_day": 5,
+            "enforce_position_limit": false,
+            "enforce_positions_limit": false,
+            "enforce_portfolio_risk_limit": false,
+            "enforce_daily_trade_limit": false,
+            "allow_buy": true,
+            "allow_sell": true,
+            "manual_confirmation_required": true
+          }
+        },
+        "builtin": false
+      }
+    },
+    "hash": "4e0750930d60bb532a8c7d70c3c4ab333e89d9844fe5de57df746495296e009a"
+  },
+  "legacy_missing_defaults": {
+    "source": "schema 1 default omission",
+    "payload": {
+      "settings_version": 1,
+      "settings": {
+        "schema_version": 1,
+        "general": {
+          "mode": "FORWARD_TEST"
+        },
+        "scanner": {
+          "country": "United States",
+          "index": "nasdaq100",
+          "history_period": "5y",
+          "interval": "1d",
+          "top_ranked_count": 10,
+          "top_trade_opportunity_count": null
+        },
+        "strategies": {
+          "EMA_RSI": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 1.0
+            },
+            "fast": 20,
+            "slow": 50,
+            "rsi_period": 14,
+            "buy_threshold": 50.0,
+            "sell_threshold": 45.0
+          },
+          "MACD": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 1.0
+            },
+            "fast": 12,
+            "slow": 26,
+            "signal": 9
+          },
+          "BOLLINGER": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 0.9,
+              "strong_downtrend": 0.9,
+              "sideways_or_weak_trend": 1.2
+            },
+            "period": 20,
+            "deviation": 2.0
+          },
+          "BREAKOUT": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.1,
+              "strong_downtrend": 1.1,
+              "sideways_or_weak_trend": 0.85
+            },
+            "lookback": 20
+          },
+          "SUPERTREND": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 0.9
+            },
+            "atr_period": 10,
+            "multiplier": 3.0
+          },
+          "ADX": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.0
+            },
+            "period": 14,
+            "threshold": 25.0
+          },
+          "VOLUME_SPIKE": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.1
+            },
+            "period": 20,
+            "threshold": 2.0
+          },
+          "MOMENTUM": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.15,
+              "strong_downtrend": 1.15,
+              "sideways_or_weak_trend": 0.9
+            },
+            "period": 10
+          },
+          "ATR": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.0
+            },
+            "period": 14,
+            "average_period": 20
+          },
+          "STOCHASTIC": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 0.9,
+              "strong_downtrend": 0.9,
+              "sideways_or_weak_trend": 1.2
+            },
+            "period": 14,
+            "smooth_period": 3,
+            "oversold": 20.0,
+            "overbought": 80.0
+          }
+        },
+        "consensus": {
+          "minimum_confidence": 55.0,
+          "minimum_agreement": 0.0
+        },
+        "risk": {
+          "risk_per_trade_percent": 0.5,
+          "maximum_position_percent": 30.0,
+          "maximum_simultaneous_positions": 5,
+          "maximum_total_portfolio_risk_percent": 2.5,
+          "minimum_risk_reward": 0.0,
+          "maximum_new_trades_per_day": 5,
+          "enforce_position_limit": false,
+          "enforce_positions_limit": false,
+          "enforce_portfolio_risk_limit": false,
+          "enforce_daily_trade_limit": false,
+          "allow_buy": true,
+          "allow_sell": true,
+          "manual_confirmation_required": true
+        },
+        "paper_trading": {
+          "usd_base_capital": 10000.0,
+          "gbp_base_capital": 10000.0,
+          "inr_base_capital": 10000.0
+        },
+        "news": {
+          "enabled": false,
+          "general_news_enabled": false,
+          "official_disclosures_enabled": false,
+          "recent_window_days": 7,
+          "max_articles": 50
+        },
+        "monitoring": {
+          "paper_update_interval_minutes": 15
+        },
+        "advanced": {
+          "execution_timeframe": "5m",
+          "fill_model": "NEXT_SESSION_OPEN",
+          "same_bar_rule": "STOP_FIRST",
+          "calendar_model": "SessionCalendar",
+          "market_data_provider": "Yahoo",
+          "execution_provider": "PAPER",
+          "database_path": "AUTOT_DATA_DIR/paper_trading/ledger.sqlite3"
+        }
+      },
+      "profile": {
+        "profile_id": "compatibility-fixture",
+        "profile_name": "Legacy custom",
+        "profile_version": 2,
+        "created_at": "2026-10-25T00:00:00+00:00",
+        "updated_at": "2026-10-26T00:00:00+00:00",
+        "parent_profile_id": null,
+        "configuration_hash": "9cce32c7f01d95bb7e1b1f2f19bffe6ce8ca22f9f321cac456bf1af62df140dd",
+        "configuration": {
+          "strategies": {
+            "EMA_RSI": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 1.0
+              },
+              "fast": 20,
+              "slow": 50,
+              "rsi_period": 14,
+              "buy_threshold": 50.0,
+              "sell_threshold": 45.0
+            },
+            "MACD": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 1.0
+              },
+              "fast": 12,
+              "slow": 26,
+              "signal": 9
+            },
+            "BOLLINGER": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 0.9,
+                "strong_downtrend": 0.9,
+                "sideways_or_weak_trend": 1.2
+              },
+              "period": 20,
+              "deviation": 2.0
+            },
+            "BREAKOUT": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.1,
+                "strong_downtrend": 1.1,
+                "sideways_or_weak_trend": 0.85
+              },
+              "lookback": 20
+            },
+            "SUPERTREND": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 0.9
+              },
+              "atr_period": 10,
+              "multiplier": 3.0
+            },
+            "ADX": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.0
+              },
+              "period": 14,
+              "threshold": 25.0
+            },
+            "VOLUME_SPIKE": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.1
+              },
+              "period": 20,
+              "threshold": 2.0
+            },
+            "MOMENTUM": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.15,
+                "strong_downtrend": 1.15,
+                "sideways_or_weak_trend": 0.9
+              },
+              "period": 10
+            },
+            "ATR": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.0
+              },
+              "period": 14,
+              "average_period": 20
+            },
+            "STOCHASTIC": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 0.9,
+                "strong_downtrend": 0.9,
+                "sideways_or_weak_trend": 1.2
+              },
+              "period": 14,
+              "smooth_period": 3,
+              "oversold": 20.0,
+              "overbought": 80.0
+            }
+          },
+          "consensus": {
+            "minimum_confidence": 55.0,
+            "minimum_agreement": 0.0
+          },
+          "risk": {
+            "risk_per_trade_percent": 0.5,
+            "maximum_position_percent": 30.0,
+            "maximum_simultaneous_positions": 5,
+            "maximum_total_portfolio_risk_percent": 2.5,
+            "minimum_risk_reward": 0.0,
+            "maximum_new_trades_per_day": 5,
+            "enforce_position_limit": false,
+            "enforce_positions_limit": false,
+            "enforce_portfolio_risk_limit": false,
+            "enforce_daily_trade_limit": false,
+            "allow_buy": true,
+            "allow_sell": true,
+            "manual_confirmation_required": true
+          }
+        },
+        "builtin": false
+      }
+    },
+    "hash": "4654aec0adfda5d31c1e3a5f8a03674beeb7c81a551cb75f54c182e69d9e7dc3"
+  },
+  "tampered": {
+    "source": "tampered without rehashing",
+    "payload": {
+      "settings_version": 3,
+      "settings": {
+        "schema_version": 1,
+        "general": {
+          "mode": "FORWARD_TEST"
+        },
+        "scanner": {
+          "country": "United States",
+          "index": "nasdaq100",
+          "history_period": "5y",
+          "interval": "1d",
+          "top_ranked_count": 99,
+          "top_trade_opportunity_count": null
+        },
+        "strategies": {
+          "EMA_RSI": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 1.0
+            },
+            "fast": 20,
+            "slow": 50,
+            "rsi_period": 14,
+            "buy_threshold": 50.0,
+            "sell_threshold": 45.0
+          },
+          "MACD": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 1.0
+            },
+            "fast": 12,
+            "slow": 26,
+            "signal": 9
+          },
+          "BOLLINGER": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 0.9,
+              "strong_downtrend": 0.9,
+              "sideways_or_weak_trend": 1.2
+            },
+            "period": 20,
+            "deviation": 2.0
+          },
+          "BREAKOUT": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.1,
+              "strong_downtrend": 1.1,
+              "sideways_or_weak_trend": 0.85
+            },
+            "lookback": 20
+          },
+          "SUPERTREND": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.2,
+              "strong_downtrend": 1.2,
+              "sideways_or_weak_trend": 0.9
+            },
+            "atr_period": 10,
+            "multiplier": 3.0
+          },
+          "ADX": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.0
+            },
+            "period": 14,
+            "threshold": 25.0
+          },
+          "VOLUME_SPIKE": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.1
+            },
+            "period": 20,
+            "threshold": 2.0
+          },
+          "MOMENTUM": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.15,
+              "strong_downtrend": 1.15,
+              "sideways_or_weak_trend": 0.9
+            },
+            "period": 10
+          },
+          "ATR": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 1.0,
+              "strong_downtrend": 1.0,
+              "sideways_or_weak_trend": 1.0
+            },
+            "period": 14,
+            "average_period": 20
+          },
+          "STOCHASTIC": {
+            "enabled": true,
+            "weight": null,
+            "regime_weights": {
+              "strong_uptrend": 0.9,
+              "strong_downtrend": 0.9,
+              "sideways_or_weak_trend": 1.2
+            },
+            "period": 14,
+            "smooth_period": 3,
+            "oversold": 20.0,
+            "overbought": 80.0
+          }
+        },
+        "consensus": {
+          "minimum_confidence": 55.0,
+          "minimum_agreement": 0.0
+        },
+        "risk": {
+          "risk_per_trade_percent": 0.5,
+          "maximum_position_percent": 30.0,
+          "maximum_simultaneous_positions": 5,
+          "maximum_total_portfolio_risk_percent": 2.5,
+          "minimum_risk_reward": 0.0,
+          "maximum_new_trades_per_day": 5,
+          "enforce_position_limit": false,
+          "enforce_positions_limit": false,
+          "enforce_portfolio_risk_limit": false,
+          "enforce_daily_trade_limit": false,
+          "allow_buy": true,
+          "allow_sell": true,
+          "manual_confirmation_required": true
+        },
+        "paper_trading": {
+          "usd_base_capital": 10000.0,
+          "gbp_base_capital": 10000.0,
+          "inr_base_capital": 10000.0
+        },
+        "news": {
+          "enabled": false,
+          "general_news_enabled": false,
+          "official_disclosures_enabled": false,
+          "recent_window_days": 7,
+          "max_articles": 50
+        },
+        "monitoring": {
+          "paper_monitor_enabled": true,
+          "paper_update_interval_minutes": 15,
+          "daily_scan_enabled": false
+        },
+        "notifications": {
+          "notifications_enabled": true,
+          "notification_channel": "CONSOLE"
+        },
+        "advanced": {
+          "execution_timeframe": "5m",
+          "fill_model": "NEXT_SESSION_OPEN",
+          "same_bar_rule": "STOP_FIRST",
+          "calendar_model": "SessionCalendar",
+          "market_data_provider": "Yahoo",
+          "execution_provider": "PAPER",
+          "database_path": "AUTOT_DATA_DIR/paper_trading/ledger.sqlite3"
+        }
+      },
+      "profile": {
+        "profile_id": "compatibility-fixture",
+        "profile_name": "Legacy custom",
+        "profile_version": 2,
+        "created_at": "2026-10-25T00:00:00+00:00",
+        "updated_at": "2026-10-26T00:00:00+00:00",
+        "parent_profile_id": null,
+        "configuration_hash": "9cce32c7f01d95bb7e1b1f2f19bffe6ce8ca22f9f321cac456bf1af62df140dd",
+        "configuration": {
+          "strategies": {
+            "EMA_RSI": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 1.0
+              },
+              "fast": 20,
+              "slow": 50,
+              "rsi_period": 14,
+              "buy_threshold": 50.0,
+              "sell_threshold": 45.0
+            },
+            "MACD": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 1.0
+              },
+              "fast": 12,
+              "slow": 26,
+              "signal": 9
+            },
+            "BOLLINGER": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 0.9,
+                "strong_downtrend": 0.9,
+                "sideways_or_weak_trend": 1.2
+              },
+              "period": 20,
+              "deviation": 2.0
+            },
+            "BREAKOUT": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.1,
+                "strong_downtrend": 1.1,
+                "sideways_or_weak_trend": 0.85
+              },
+              "lookback": 20
+            },
+            "SUPERTREND": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.2,
+                "strong_downtrend": 1.2,
+                "sideways_or_weak_trend": 0.9
+              },
+              "atr_period": 10,
+              "multiplier": 3.0
+            },
+            "ADX": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.0
+              },
+              "period": 14,
+              "threshold": 25.0
+            },
+            "VOLUME_SPIKE": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.1
+              },
+              "period": 20,
+              "threshold": 2.0
+            },
+            "MOMENTUM": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.15,
+                "strong_downtrend": 1.15,
+                "sideways_or_weak_trend": 0.9
+              },
+              "period": 10
+            },
+            "ATR": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 1.0,
+                "strong_downtrend": 1.0,
+                "sideways_or_weak_trend": 1.0
+              },
+              "period": 14,
+              "average_period": 20
+            },
+            "STOCHASTIC": {
+              "enabled": true,
+              "weight": null,
+              "regime_weights": {
+                "strong_uptrend": 0.9,
+                "strong_downtrend": 0.9,
+                "sideways_or_weak_trend": 1.2
+              },
+              "period": 14,
+              "smooth_period": 3,
+              "oversold": 20.0,
+              "overbought": 80.0
+            }
+          },
+          "consensus": {
+            "minimum_confidence": 55.0,
+            "minimum_agreement": 0.0
+          },
+          "risk": {
+            "risk_per_trade_percent": 0.5,
+            "maximum_position_percent": 30.0,
+            "maximum_simultaneous_positions": 5,
+            "maximum_total_portfolio_risk_percent": 2.5,
+            "minimum_risk_reward": 0.0,
+            "maximum_new_trades_per_day": 5,
+            "enforce_position_limit": false,
+            "enforce_positions_limit": false,
+            "enforce_portfolio_risk_limit": false,
+            "enforce_daily_trade_limit": false,
+            "allow_buy": true,
+            "allow_sell": true,
+            "manual_confirmation_required": true
+          }
+        },
+        "builtin": false
+      }
+    },
+    "hash": "e914e7104a17022f6c4f4dfface56176a37f009a64b867616689039e3deeae55"
+  }
+}

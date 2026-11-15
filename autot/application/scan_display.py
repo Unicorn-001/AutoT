@@ -70,7 +70,8 @@ def render_scan_results(saved):
             st.dataframe(pd.DataFrame(diagnostics.get("failures", []), columns=["symbol", "reason"]), hide_index=True)
 
     st.subheader("Trade Opportunities")
-    st.caption("BUY / SELL results with trade quality ≥ 70, ordered by opportunity score.")
+    threshold = settings.get("quality_threshold", 70)
+    st.caption(f"BUY / SELL results with trade quality ≥ {threshold:g}, ordered by opportunity score.")
     from autot.settings.models import SettingsState
     limit = (SettingsState.model_validate(saved['settings_state']).settings.scanner.top_trade_opportunity_count
              if saved.get('settings_state') else None)

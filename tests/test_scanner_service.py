@@ -332,13 +332,10 @@ def test_run_scan_orchestrates_loaders_analysis_and_rankings(with_callbacks):
         ("stop", "Analyse Stocks"),
     ]
     if with_callbacks:
-        assert stages == [
-            ("loading_universe", {}),
-            ("universe_loaded", {"count": 4}),
-            ("loading_market_data", {}),
-            ("analysing", {}),
-            ("ranking", {}),
-        ]
+        assert [phase for phase, _ in stages[:3]] == [
+            'loading_universe', 'universe_loaded', 'loading_market_data']
+        assert stages[-1] == ('ranking', {})
+        assert stages[-2] == ('analysing', dict(symbols_fetched=4, symbols_analyzed=2, symbols_failed=2))
         assert successes == [
             (index, 4, result["symbol"])
             for index, result in enumerate(scan["results"], start=1)

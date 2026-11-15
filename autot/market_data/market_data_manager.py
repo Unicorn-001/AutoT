@@ -37,8 +37,10 @@ class MarketDataManager:
         symbols: list[str],
         period: str,
         interval: str,
+        on_progress=None,
     ) -> dict[str, pd.DataFrame]:
         return download_batch_stock_data(
+            on_progress=on_progress,
             symbols=symbols,
             period=period,
             interval=interval,
