@@ -297,6 +297,17 @@ def render_trade_counts(trades, summaries):
 
 
 def render_execution_comparison(trade):
+    check = trade.get('fill_time_risk_check')
+    if check:
+        st.markdown('**Fill-Time Risk Check**')
+        labels = [('Reference entry', 'reference_entry'), ('Actual fill', 'actual_fill_price'),
+                  ('Planned quantity', 'planned_quantity'), ('Approved quantity', 'approved_quantity'),
+                  ('Planned total risk', 'planned_total_risk'),
+                  ('Actual risk before adjustment', 'actual_total_risk'),
+                  ('Approved total risk', 'approved_total_risk'),
+                  ('Decision', 'decision'), ('Reason', 'reason')]
+        st.table(pd.DataFrame([(label, str(check[key]) if check[key] is not None else '—')
+                               for label, key in labels], columns=['Field', 'Value']).set_index('Field'))
     st.caption(f"Signal Price: {format_price(trade['signal_price'])} {trade['currency']} · "
                f"Actual Fill Price: {format_price(trade['fill_price'])} {trade['currency']} · "
                f"Signal R:R: {trade['risk_reward_ratio']}")

@@ -397,9 +397,9 @@ def test_monitor_preserves_gap_capital_protection(setup):
     provider.bars = [bar(o=102, l=100)]
     now[0] = OPEN+BAR
     run = monitor(service).run(once=True)
-    assert run['status'] == 'FAILED'
-    assert all(t['fill_price'] is None and t['review_required'] for t in service.ledger.all())
-    assert service.ledger.summaries()['USD']['reserved'] == 10000
+    assert run['status'] == 'SUCCESS'
+    assert all(t['fill_price'] == '102' and t['quantity'] == 14 for t in service.ledger.all())
+    assert service.ledger.summaries()['USD']['reserved'] == 7140
 
 
 def test_interval_change_reschedules_and_no_work_never_scans(setup):

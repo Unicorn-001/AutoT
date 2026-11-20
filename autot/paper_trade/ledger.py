@@ -104,7 +104,12 @@ class Ledger:
     def decode(row):
         snapshot = json.loads(row["snapshot"])
         snapshot.setdefault("configuration_source", "PRE_SETTINGS_BASELINE")
-        return dict(snapshot, **json.loads(row["state"]),
+        state = json.loads(row['state'])
+        state.setdefault('fill_time_risk_check', None)
+        check = state['fill_time_risk_check']
+        if check and check['decision'] in ('ACCEPT', 'RESIZE'):
+            snapshot['quantity'] = check['approved_quantity']
+        return dict(snapshot, **state,
                     trade_id=row["trade_id"], revision=row["revision"],
                     confirmation_key=row["confirmation_key"],
                     opportunity_id=row["opportunity_id"], intent_key=row["intent_key"])
@@ -249,14 +254,37 @@ class Ledger:
                          revision_before=None, revision_after=0)
             return trade
 
-    def update(self, trade, state, *, events=(), run_id=None):
+    def update(self, trade, state, *, events=(), run_id=None, evaluator=None):
         with self.connection() as db:
             db.execute("BEGIN IMMEDIATE")
-            if trade["status"] == "PENDING_ENTRY" and state["fill_price"] is not None:
-                # Both shorts and longs reserve full notional, not fictional short proceeds.
-                needed = D(state["fill_price"]) * trade["quantity"] - D(trade["intended_position_value"])
-                if needed > self._summaries(db)[trade["currency"]]["available"]:
-                    raise ValueError("Gap fill exceeds available capital; review required.")
+            current = db.execute('SELECT * FROM trades WHERE trade_id=?', (trade['trade_id'],)).fetchone()
+            if current is None or current['revision'] != trade['revision']:
+                raise ConcurrentUpdate('Trade changed during monitoring; retry the update.')
+            def fill_recheck(price, fill_time):
+                from autot.paper_trade.fill_risk import recheck
+                return recheck(trade, price,
+                               [self.decode(r) for r in db.execute('SELECT * FROM trades')],
+                               self._summaries(db)[trade['currency']],
+                               checked_at=audit.timestamp(), fill_time=fill_time)
+            if evaluator is not None:
+                state = evaluator(fill_recheck)
+            elif trade['status'] == 'PENDING_ENTRY' and state.get('fill_price') is not None:
+                check = fill_recheck(state['fill_price'], state['filled_at'])
+                state = dict(state, fill_time_risk_check=check)
+                if check['decision'] == 'REJECT':
+                    from autot.paper_trade.service import initial_state
+                    state = dict(initial_state(), status='CANCELLED',
+                                 cancelled_at=check['rechecked_at'], fill_time_risk_check=check,
+                                 exit_reason='FILL_TIME_REJECTED: ' + check['reason'])
+                    events = ()
+                elif check['decision'] == 'RESIZE':
+                    from autot.portfolio.pnl import calculate_pnl
+                    quantity = check['approved_quantity']
+                    for field, price in (('realized_pnl', state.get('exit_price')),
+                                         ('unrealized_pnl', state.get('current_price') if state['status'] == 'OPEN' else None)):
+                        state[field] = str(calculate_pnl(D(state['fill_price']), D(price), quantity,
+                                                        trade['side'])) if price is not None else '0'
+                    events = ()  # Rebuild required transitions with approved P&L.
             changed = db.execute("UPDATE trades SET state=?, revision=revision+1 WHERE trade_id=? AND revision=?",
                                  (json.dumps(state, allow_nan=False), trade["trade_id"], trade["revision"]))
             if changed.rowcount != 1:
@@ -285,8 +313,10 @@ class Ledger:
                     items.append(audit.event(kind, state, when=when, before=trade['status'],
                                              reason=state.get('review_reason') if kind == 'REVIEW_REQUIRED'
                                              else state.get('exit_reason')))
+            check = state.get('fill_time_risk_check')
+            audit_trade = dict(trade, quantity=check['approved_quantity']) if check else trade
             for item in items:
-                audit.append(db, trade, item, revision_before=trade['revision'],
+                audit.append(db, audit_trade, item, revision_before=trade['revision'],
                              revision_after=trade['revision'] + 1, run_id=run_id)
         return self.get(trade["trade_id"])
 

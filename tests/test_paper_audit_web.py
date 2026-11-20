@@ -39,6 +39,9 @@ def test_journal_timeline_runs_and_raw_snapshot_rendering(ui):
         assert any(e.label == 'Raw trade snapshot JSON' for e in app.expander)
         assert any(e.label.startswith('Details / actions') for e in app.expander)
         assert len(app.json) == 3
+        risk_table = next(t.value for t in app.table if 'Approved quantity' in t.value.index)
+        assert risk_table.loc['Decision', 'Value'] == 'ACCEPT'
+        assert risk_table.loc['Planned quantity', 'Value'] == '20'
         assert service.ledger.all() == before
         assert service.ledger.events(t['trade_id']) == events
         assert service.ledger.recent_runs() == runs

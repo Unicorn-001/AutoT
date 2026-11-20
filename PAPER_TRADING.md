@@ -25,7 +25,8 @@ and external behavior are unchanged. Legacy files are not migrated or merged.
 ## State, snapshots and storage
 
 `PENDING_ENTRY -> OPEN -> CLOSED`, or `PENDING_ENTRY -> CANCELLED` before its
-eligible session starts. A trade may fill and close in the same processed bar.
+eligible session starts or when the fill-time risk check rejects entry. A trade may
+fill and close in the same processed bar.
 `review_required` is a flag, not another lifecycle state.
 
 `AUTOT_DATA_DIR/paper_trading/ledger.sqlite3` persists independently of browsers,
@@ -536,3 +537,101 @@ Future **FILL-TIME RISK RECHECK**: next-session gaps can materially change actua
 stop risk versus planned risk. A future version may recompute risk at fill and
 optionally reduce size/reject entry. Scheduler V1 does not change sizing or
 forward-test execution rules.
+
+## Fill-Time Risk Recheck V1
+
+Execution is now `confirmation -> NEXT_SESSION_OPEN price -> risk recheck ->
+ACCEPT / RESIZE / REJECT -> open only if approved`. Scanner and signal calculations,
+fill model, original stop and target are unchanged. Already filled historical trades
+are never rechecked or recalculated.
+
+The check runs in the ledger's `BEGIN IMMEDIATE` transaction, after fetching bars
+and before opening or calculating P&L. It uses the existing currency account's base
+capital and the trade's captured risk settings (including the configured 0.5% where
+applicable), not today's potentially different active profile. Pre-settings pending
+records use their stored risk percentage. There is no new capital model.
+
+- BUY risk/share: `fill - original_stop`; planned risk/share: `reference - original_stop`.
+- SELL risk/share: `original_stop - fill`; planned risk/share: `original_stop - reference`.
+- Planned total risk: `planned_risk_per_share * planned_quantity`.
+- Unadjusted actual risk: `actual_risk_per_share * planned_quantity`.
+- Allowance: `account_base_capital * captured_risk_percent / 100`.
+- Approved quantity: `min(planned_quantity, floor(allowance / actual_risk_per_share))`.
+- Approved risk: `actual_risk_per_share * approved_quantity`.
+
+All calculations use Decimal, with no added risk tolerance or rounding-up allowance.
+Favorable gaps never increase quantity. Invalid/missing/non-finite prices, an invalid
+quantity, nonpositive directional stop risk, or inability to afford one risk-valid
+share reject the entry. Existing enabled position-count, position-notional, portfolio
+risk and daily admission limits are also enforced. Portfolio risk uses actual fill
+risk for existing open trades and reference risk for pending trades. The candidate
+is excluded from counts to avoid counting its reservation twice. Daily limits retain
+the existing confirmation-day, market-local, mode-specific semantics; filling a
+previously confirmed trade does not consume a second daily admission. Full notional
+must fit available capital after releasing the candidate's original reservation.
+Portfolio/capital failures reject; V1 only resizes to the per-trade risk allowance.
+
+The new optional `state.fill_time_risk_check` JSON object stores the reference,
+planned quantity/risk, executable price/risk, approved quantity/risk, allowance,
+decision/reason, fill time and wall-clock recheck time. No SQL table migration or
+historical backfill is needed: old rows read with a null check. The immutable snapshot
+retains planned quantity; decoded trade quantity is approved quantity after execution,
+so reservation, P&L and later exits use the approved size. Existing append-only fill
+or cancellation events retain the decision payload in the same transaction.
+
+Rejections use `CANCELLED` with `FILL_TIME_REJECTED: <reason>`, no fill or P&L, and no
+remaining reservation. They are not losses. Paper Trading details show a **Fill-Time
+Risk Check** table, and history retains the reason. The existing notification outbox
+projects RESIZE/REJECT notices once per trade; delivery uses existing notification
+settings and workers. No new notification service is required.
+
+### Controlled manual validation (isolated ledger)
+
+From the repository root, run these commands in a fresh terminal. This creates only
+a temporary test account and uses supplied bars, without reading or changing the
+operator's historical ledger. The fixture helpers supply a qualified BUY reference
+100, stop 95, target 110, USD capital 10,000 and a fixed clock.
+
+```sh
+export AUTOT_DATA_DIR="$(mktemp -d /private/tmp/autot-fill-check.XXXXXX)"
+venv/bin/python - <<'PY'
+import json
+from autot.paper_trade.ledger import Ledger
+from autot.paper_trade.service import PaperTradingService
+from autot.settings.store import SettingsStore
+from tests.test_settings import changed
+from tests.test_settings_paper import create
+from tests.test_prospective_paper import CREATED, OPEN, BAR, Provider, bar
+
+store = SettingsStore()
+state = store.save(changed(risk={'risk_per_trade_percent': .5}), expected_version=0)
+ledger = Ledger()
+provider = Provider()
+clock = [CREATED]
+service = PaperTradingService(ledger, provider, clock=lambda: clock[0])
+for key, symbol, opening in [('resize', 'AAPL', 102), ('reject', 'MSFT', 95)]:
+    clock[0] = CREATED
+    trade = create(service, state, key=key, symbol=symbol)
+    provider.bars = [bar(opening, opening, opening, opening)]
+    clock[0] = OPEN + BAR
+    service.update_positions()
+    saved = Ledger(ledger.path).get(trade['trade_id'])
+    print(key, saved['status'], json.dumps(saved['fill_time_risk_check'], indent=2))
+print('Account:', ledger.summaries()['USD'])
+print('Temporary ledger:', ledger.path)
+PY
+venv/bin/streamlit run web_app.py
+```
+
+1. Check `resize`: OPEN, planned 10 shares/$50 risk, fill 102, actual risk/share 7,
+   unadjusted risk $70, approved 7 shares/$49 risk; stop 95 and target 110 unchanged.
+2. Check `reject`: CANCELLED, `INVALID_STOP_RELATIVE_TO_FILL`, approved quantity/risk
+   zero, no fill/P&L. Account reservation is $714 from AAPL only; available is $9,286.
+3. In the temporary UI choose **Paper Trading**, expand AAPL and MSFT details and
+   inspect the nine Fill-Time Risk Check fields. Inspect Performance / Journal:
+   MSFT is cancelled, not a losing completed trade. Do not request live market updates
+   for these synthetic bars.
+4. Restart Streamlit with the same `AUTOT_DATA_DIR`; values and audit should persist.
+   Stop it and close this terminal when finished to discard the environment override.
+
+Automated equivalents: `venv/bin/python -m pytest tests/test_fill_time_risk.py -q`.

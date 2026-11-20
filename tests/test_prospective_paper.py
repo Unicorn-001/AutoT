@@ -105,7 +105,7 @@ def test_next_session_fill_uses_open_and_preserves_signal(setup):
     updated = service.update_positions()[0]
     assert updated["status"] == "OPEN" and updated["fill_price"] == "102"
     assert updated["signal_price"] == "100" and updated["filled_at"] == OPEN.isoformat()
-    assert updated["unrealized_pnl"] == "20"  # uses fill 102, not reference 100
+    assert updated["unrealized_pnl"] == "14"  # fill 102 and risk-approved quantity 14
     assert updated["last_checked_at"] == OPEN.isoformat()
     for key in ("original_opportunity", "signal_time", "stop_loss", "take_profit", "trade_quality"):
         assert updated[key] == t[key]
@@ -178,8 +178,12 @@ def test_entry_gap_can_fill_and_immediately_close_without_fictional_profit(setup
     provider.bars = [bar(*ohlc)]
     now[0] = OPEN + BAR
     t = service.update_positions()[0]
-    assert t["status"] == "CLOSED" and t["exit_reason"] == reason
-    assert t["fill_price"] == t["exit_price"] == str(ohlc[0])
+    if reason == 'GAP_STOP':
+        assert t['status'] == 'CANCELLED' and t['fill_price'] is None
+        assert t['fill_time_risk_check']['reason'] == 'INVALID_STOP_RELATIVE_TO_FILL'
+    else:
+        assert t["status"] == "CLOSED" and t["exit_reason"] == reason
+        assert t["fill_price"] == t["exit_price"] == str(ohlc[0])
     assert t["realized_pnl"] == "0"
 
 
@@ -316,7 +320,8 @@ def test_gap_cannot_overdraw_account(setup):
     provider.bars = [bar(102, 104, 100, 103)]
     now[0] = OPEN + BAR
     updated = service.update_positions()
-    assert all(t["status"] == "PENDING_ENTRY" and t["review_required"] for t in updated)
+    assert all(t['status'] == 'OPEN' and t['quantity'] == 14 for t in updated)
+    assert service.ledger.summaries()['USD']['available'] == 2860
 
 
 def test_revision_conflict_cannot_overwrite_trade(setup):

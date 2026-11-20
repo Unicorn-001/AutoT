@@ -327,7 +327,7 @@ def test_successful_same_bar_close_run_counts(setup):
     assert run['trades_updated'] == run['trades_opened'] == run['trades_closed'] == run['bars_processed'] == 1
 
 
-def test_failed_gap_capital_check_does_not_leave_fill_events(setup):
+def test_resized_gap_fill_has_approved_quantity_events(setup):
     service, provider, now = setup
     for i in range(5):
         confirm(service, key=str(i), create_another=True)
@@ -335,10 +335,11 @@ def test_failed_gap_capital_check_does_not_leave_fill_events(setup):
     now[0] = OPEN + BAR
     service.update_positions()
     for trade in service.ledger.all():
-        assert trade['status'] == 'PENDING_ENTRY'
-        assert kinds(service.ledger, trade) == ['TRADE_CREATED', 'REVIEW_REQUIRED']
+        assert trade['status'] == 'OPEN' and trade['quantity'] == 14
+        fills = [e for e in service.ledger.events(trade['trade_id']) if e['event_type'] == 'ENTRY_FILLED']
+        assert len(fills) == 1 and fills[0]['quantity'] == 14
     run = service.ledger.get_run(service.last_update_run_id)
-    assert run['status'] == 'FAILED' and run['bars_processed'] == 0
+    assert run['status'] == 'SUCCESS' and run['bars_processed'] == 5
 
 
 def test_controlled_event_type_and_trade_reference(setup):

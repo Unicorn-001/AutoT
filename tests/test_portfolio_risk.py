@@ -164,12 +164,12 @@ def test_planned_risk_and_gap_risk_are_distinct_and_never_use_current_settings(e
     state = store.save(changed(risk={'risk_per_trade_percent': .5, 'enforce_portfolio_risk_limit': True,
                                     'maximum_total_portfolio_risk_percent': 1.5}), expected_version=0)
     result = preview(service, state)
-    assert result.current_open_risk == 100 and result.fill_adjusted_open_risk == 140
-    assert result.fill_risk_difference == 40 and result.warnings
-    assert result.proposed_total_open_risk == 150 and result.allowed
+    assert result.current_open_risk == 70 and result.fill_adjusted_open_risk == 98
+    assert result.fill_risk_difference == 28 and result.warnings
+    assert result.proposed_total_open_risk == 120 and result.allowed
     assert result.current_open_positions == result.open_positions == 1
-    assert result.existing_reserved_notional == result.largest_position == 2040
-    assert result.available_capital == 7960
+    assert result.existing_reserved_notional == result.largest_position == 1428
+    assert result.available_capital == 8572
     assert service.ledger.get(first['trade_id'])['portfolio_risk_decision']['proposed_trade_risk'] == '100'
 
 

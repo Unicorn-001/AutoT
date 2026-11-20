@@ -84,6 +84,11 @@ def project(ledger):
                 payload['quantity'] = row['quantity']
                 enqueue(db, 'audit:' + row['idempotency_key'], kind, payload, row['recorded_at'],
                         row['trade_id'], row['symbol'], row['currency'])
+            if row['event_type'] in ('ENTRY_FILLED', 'TRADE_CANCELLED'):
+                check = json.loads(row['payload_json']).get('fill_time_risk_check')
+                if check and check['decision'] in ('RESIZE', 'REJECT'):
+                    enqueue(db, 'fill-risk:' + row['trade_id'], 'PAPER_FILL_RISK_' + check['decision'],
+                            check, row['recorded_at'], row['trade_id'], row['symbol'], row['currency'])
             db.execute('UPDATE notification_checkpoint SET event_id=?', (row['event_id'],))
         runs = db.execute('''SELECT * FROM paper_update_runs WHERE rowid>? AND status!='RUNNING'
             AND run_id NOT IN (SELECT run_id FROM notification_runs) ORDER BY rowid''',
@@ -108,6 +113,12 @@ def project(ledger):
 def message(notification):
     p = json.loads(notification['payload_json'])
     kind = notification['event_type']
+    if kind in ('PAPER_FILL_RISK_RESIZE', 'PAPER_FILL_RISK_REJECT'):
+        return (f"{notification['symbol']} fill-time risk: {p['decision']}\n"
+                f"Reason: {p['reason']}\n"
+                f"Qty: {p['planned_quantity']} -> {p['approved_quantity']}\n"
+                f"Fill: {p['actual_fill_price']} {notification['currency']}\n"
+                f"Risk: {p['actual_total_risk']} -> {p['approved_total_risk']} {notification['currency']}")
     if notification['trade_id']:
         title = {'PAPER_ENTRY_OPENED': f"{p.get('side', '')} opened", 'PAPER_TRADE_TARGET': 'TARGET reached',
                  'PAPER_TRADE_STOP': 'STOP reached', 'PAPER_TRADE_MANUAL_CLOSE': 'manually closed',

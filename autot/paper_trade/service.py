@@ -20,7 +20,7 @@ LOGGER = logging.getLogger(__name__)
 STATE_FIELDS = ("status", "fill_price", "filled_at", "last_checked_at", "exit_price", "closed_at",
                 "realized_pnl", "unrealized_pnl", "current_price", "pnl_percent", "exit_reason",
                 "intrabar_sequence_ambiguous", "ambiguity_reason", "review_required", "review_reason",
-                "manual_close_requested_at", "cancelled_at", "data_source")
+                "manual_close_requested_at", "cancelled_at", "data_source", "fill_time_risk_check")
 
 
 def now_utc():
@@ -116,7 +116,7 @@ def close_at(trade, state, price, stamp, reason):
                  pnl_percent=str(pnl / (D(state["fill_price"]) * trade["quantity"]) * 100), exit_reason=reason)
 
 
-def evaluate_bars(trade, batch, *, end, calendar, events=None):
+def evaluate_bars(trade, batch, *, end, calendar, events=None, fill_recheck=None):
     """Consume only a contiguous prefix of completed regular-session bars.
 
     Opening gaps execute at OPEN (including targets). Otherwise stop takes
@@ -124,9 +124,10 @@ def evaluate_bars(trade, batch, *, end, calendar, events=None):
     after the request, never at a stale last price or before historical events.
     """
     events = events if events is not None else []
-    state = {key: trade[key] for key in STATE_FIELDS}
+    state = {key: trade.get(key) for key in STATE_FIELDS}
     if state["status"] not in ("PENDING_ENTRY", "OPEN"):
         return state
+    trade = dict(trade)
     end = utc(end)
     if quote_scale(trade["market"], batch.quote_currency) != D(trade["quote_scale"]):
         raise HistoryUnavailable("Quote unit changed; review required.")
@@ -138,7 +139,6 @@ def evaluate_bars(trade, batch, *, end, calendar, events=None):
         bars[bar.timestamp] = bar
     state.update(review_required=False, review_reason=None, data_source=batch.source)
     scale = D(trade["quote_scale"])
-    stop, target = D(trade["stop_loss"]), D(trade["take_profit"])
     for stamp in calendar.completed_starts(trade["market"], start, end):
         if state['status'] == 'PENDING_ENTRY':
             events.append(audit.event('ENTRY_ELIGIBLE', state, when=trade['eligible_at'],
@@ -156,11 +156,21 @@ def evaluate_bars(trade, batch, *, end, calendar, events=None):
         if state["status"] == "PENDING_ENTRY":
             events.append(audit.event('ENTRY_BAR_PROCESSED', state, when=stamp.isoformat(),
                                       before=before, bar=bar, scale=scale))
+            if fill_recheck is not None:
+                check = fill_recheck(opening, stamp.isoformat())
+                state['fill_time_risk_check'] = check
+                if check['decision'] == 'REJECT':
+                    state.update(status='CANCELLED', cancelled_at=check['rechecked_at'],
+                                 exit_reason='FILL_TIME_REJECTED: ' + check['reason'],
+                                 last_checked_at=stamp.isoformat())
+                    break
+                trade['quantity'] = check['approved_quantity']
             state.update(status="OPEN", fill_price=str(opening), filled_at=stamp.isoformat())
             entry_event = audit.event('ENTRY_FILLED', state, when=stamp.isoformat(),
                                      before=before, bar=bar, scale=scale)
             entry_event['price'] = str(opening)
             events.append(entry_event)
+        stop, target = D(trade["stop_loss"]), D(trade["take_profit"])
         buy = trade["side"] == "BUY"
         gap_stop = opening <= stop if buy else opening >= stop
         gap_target = opening >= target if buy else opening <= target
@@ -248,7 +258,7 @@ class PaperTradingService:
             return trade
         if trade["status"] != "PENDING_ENTRY" or utc(self.clock()) >= utc(trade["eligible_at"]):
             raise ValueError("Cancellation requires a pending trade before its eligible session. Update positions first.")
-        state = {key: trade[key] for key in STATE_FIELDS}
+        state = {key: trade.get(key) for key in STATE_FIELDS}
         state.update(status="CANCELLED", cancelled_at=utc(self.clock()).isoformat())
         return self.ledger.update(trade, state)
 
@@ -258,7 +268,7 @@ class PaperTradingService:
             raise ValueError("Only open positions can request manual close.")
         if trade["manual_close_requested_at"]:
             return trade
-        state = {key: trade[key] for key in STATE_FIELDS}
+        state = {key: trade.get(key) for key in STATE_FIELDS}
         state["manual_close_requested_at"] = utc(self.clock()).isoformat()
         return self.ledger.update(trade, state)
 
@@ -291,9 +301,17 @@ class PaperTradingService:
                 phase = 'provider'
                 try:
                     batch = self.provider.get_intraday_bars(trade['symbol'], start, end, interval='5m')
-                    state = evaluate_bars(trade, batch, end=end, calendar=self.calendar, events=events)
                     phase = 'persistence'
-                    result = self.ledger.update(trade, state, events=events, run_id=run_id)
+                    def evaluate(fill_recheck):
+                        nonlocal phase
+                        phase = 'provider'
+                        evaluated = evaluate_bars(trade, batch, end=end, calendar=self.calendar,
+                                                  events=events, fill_recheck=fill_recheck)
+                        phase = 'persistence'
+                        return evaluated
+                    result = self.ledger.update(trade, None, events=events, run_id=run_id,
+                                                evaluator=evaluate)
+                    state = result
                     counts['bars_processed'] += sum(e['event_type'] == 'POSITION_CHECKED' for e in events)
                     counts['trades_opened'] += int(not trade['fill_price'] and bool(state['fill_price']))
                     counts['trades_closed'] += int(state['status'] == 'CLOSED')
@@ -306,7 +324,7 @@ class PaperTradingService:
                     counts['errors_count'] += 1
                     LOGGER.warning('Paper provider/execution verification failed for trade %s', trade['trade_id'])
                     # Roll back evaluated events along with a rejected state change.
-                    state = {key: trade[key] for key in STATE_FIELDS}
+                    state = {key: trade.get(key) for key in STATE_FIELDS}
                     state.update(review_required=True,
                                  review_reason='Intraday update could not be verified (history, quote units or capital). Review server logs; no execution invented.')
                     failures = []
@@ -321,7 +339,7 @@ class PaperTradingService:
                         counts['warnings_count'] += 1
                         updated.append(self.ledger.get(trade['trade_id']))
                         continue
-                counts['trades_updated'] += int(any(state[k] != trade[k] for k in STATE_FIELDS))
+                counts['trades_updated'] += int(any(state.get(k) != trade.get(k) for k in STATE_FIELDS))
                 counts['warnings_count'] += int(state['review_required'])
                 updated.append(result)
         except BaseException:
