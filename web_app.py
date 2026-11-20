@@ -8,6 +8,7 @@ import streamlit as st
 st.set_option("client.showErrorDetails", "none")
 
 from autot.application.scan_display import render_scan_results
+from autot.application.real_trade_journal_display import render_real_trade_journal
 from autot.application.paper_display import render_paper_dashboard, render_opportunity_actions
 from autot.settings.configuration_manager import ConfigurationManager
 from autot.settings.store import SettingsStore
@@ -37,7 +38,10 @@ def main():
     active = store.load()
     if store.warning:
         st.warning(store.warning)
-    workspace = st.radio("Workspace", ["Scanner", "Paper Trading", "Settings"], horizontal=True)
+    workspace = st.radio("Workspace", ["Scanner", "Paper Trading", "Real Trade Journal", "Settings"], horizontal=True)
+    if workspace == "Real Trade Journal":
+        render_real_trade_journal()
+        return
     if workspace == 'Settings':
         render_settings()
         return
