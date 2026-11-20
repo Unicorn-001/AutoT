@@ -26,7 +26,7 @@ def test_manual_link_decision_reasons_and_restart(persisted, price, decision, re
     assert any(run['scan_run_id'] in c.value for c in app.caption)
     assert MarketContextStore().history(run['scan_run_id'], '0') == []
     app.text_input[0].set_value(price)
-    app.button[0].click().run()
+    next(b for b in app.button if b.label == 'Assess current price').click().run()
     assert not app.exception
     outputs = {'ELIGIBLE': app.success, 'CAUTION': app.warning, 'REJECT': app.error}
     assert outputs[decision][0].value == decision
@@ -60,7 +60,7 @@ def test_scanner_details_select_correct_persisted_opportunity(persisted):
     assert not app.exception
     assert any(e.label == 'Pre-Trade Market Context · SECOND · SELL' for e in app.expander)
     app.text_input[1].set_value('99.4')
-    app.button[1].click().run()
+    [b for b in app.button if b.label == 'Assess current price'][1].click().run()
     assert not app.exception and app.error[0].value == 'REJECT'
     store = MarketContextStore()
     assert store.history(run['scan_run_id'], '0') == []

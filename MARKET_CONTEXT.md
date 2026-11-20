@@ -1,7 +1,7 @@
-# Pre-Trade Market Context V1
+# Pre-Trade Market Context V1.1
 
 An explicit, advisory assessment answers whether a persisted scanner setup remains
-attractive at a manually supplied executable price. It never changes scanner
+attractive at a manually supplied or explicitly fetched price. It never changes scanner
 calculations/results, strategy signals or scores, original prices, paper trades,
 or Fill-Time Risk Recheck. It neither places nor blocks trades.
 
@@ -77,10 +77,8 @@ changes; unknown codes render verbatim.
 | SETUP_STILL_VALID | No reject or caution rule applies |
 
 `DO_NOT_CHASE` is explanatory text for R:R deterioration, not a second reason code.
-Assessment timestamps describe evaluation time; V1 does not verify quote age,
-spread, slippage, fees, market hours, liquidity, or manual price provenance. The
-optional session label is metadata only. No live provider refresh is implemented;
-refresh means entering a fresh price and assessing again. Unsaved legacy/session
+Assessment timestamps describe evaluation time. Neither version verifies executable
+bid/ask, spread, slippage, fees, or liquidity. V1 records retain their original meaning. Unsaved legacy/session
 results cannot be assessed. The UI shows the latest assessment; all earlier
 snapshots remain in the database and are accessible through `history`.
 
@@ -129,3 +127,71 @@ venv/bin/streamlit run web_app.py
 4. Reload/restart the app: the latest assessment and timestamp persist. Reloading
    alone creates no assessment. Enter a new price and click to add a new record.
    Verify original scanner results and existing paper trades are unchanged.
+
+
+## V1.1 automatic price retrieval
+
+**Fetch latest price → Review/edit → Assess current price**. Fetching and rerendering
+never assess or trade. Manual entry works without fetching. A failed refresh shows
+a non-fatal error and preserves the previous input and quote provenance. Quotes
+are scoped in Streamlit state to scanner run and opportunity; unsaved quotes do not
+survive a new browser session. Saved assessment metadata survives restart and is
+shown below the input.
+
+`MarketDataManager.get_latest_quote` delegates to `market_data/quote.py`, reusing
+symbol normalization and `YahooDownloadPool` (owned workers, HTTP session, error
+handling and cache cleanup). No new provider stack or dependency is introduced.
+Yahoo is the only configured provider supported by the existing settings model.
+The request uses five days of one-minute data and selects the latest bar's close;
+it does not use the historical loader's 50-row minimum or fall back to scanner data.
+The existing downloader uses adjusted prices and regular-session bars. This is a
+latest available **bar close**, potentially delayed, not a live executable quote;
+after-hours trades are not included. The timestamp is the bar-start timestamp,
+normalized by Yahoo's timezone-aware index. Naive/missing timestamps are unknown.
+An empty Yahoo response cannot distinguish a nonexistent symbol from unavailable
+data, so the error message states both possibilities. Provider exceptions/timeouts,
+missing prices and nonpositive/nonfinite prices are handled without crashing the UI.
+
+`Quote` holds symbol, price, optional timezone-aware timestamp, source and optional
+session label. Its audit snapshot calculates age at assessment (and display) time.
+`STALE_QUOTE_SECONDS = 300` is configurable in `market_data/quote.py`: stale is true
+only for a known active `REGULAR` session with age strictly above the threshold.
+Known closed/pre/post sessions are not stale solely because of elapsed time.
+The Yahoo download supplies **no reliable current-session status**, so V1.1 leaves
+the session unknown and conservatively does not mark it stale. The UI explicitly
+says freshness is unverified; false does not certify freshness. No weekday/timezone
+heuristic or holiday calendar is assumed. Future timestamps have unknown age.
+
+New assessments have version `"1.1"` and additive fields: `fetched_price`,
+`assessed_price` (also retained as `current_price`), `price_source`,
+`quote_timestamp` (ISO 8601), `quote_age_seconds`, `stale`, `session_label`, and
+`manual_override`. Override compares the numeric assessed value to the fetched
+price; editing then restoring the same value is not an override. Quote metadata is
+preserved on override and age is recomputed at assessment. Staleness is advisory
+metadata only; existing assessment decisions and formulas remain unchanged.
+Manual-only assessments have no fetched price/timestamp/age and source MANUAL.
+V1 rows receive defaults on read only; no migration or retroactive rewrite occurs.
+
+### Exact V1.1 manual validation
+
+1. Run the synthetic fixture command above and start Streamlit with the same
+   `AUTOT_DATA_DIR`. Open Scanner → Trade Opportunities → CAH's Pre-Trade Market
+   Context expander.
+2. Enter `275.63`, click **Assess current price**, and verify the V1 result above.
+3. Click **Fetch latest price** with network access. Verify a price is prefilled
+   and price, timestamp, Yahoo source, unknown session, age and freshness limitation
+   appear. Confirm the last assessment's timestamp and price have not changed.
+4. Click **Assess current price**. Verify the saved fetched and assessed prices
+   match, manual override is False, and quote timestamp/age/source are displayed.
+5. Change the price to `275.63`. Confirm editing alone saves nothing. Click
+   **Assess current price**; verify the original fetched price is preserved and
+   override is True (unless the fetched price itself was exactly `275.63`).
+6. Open NVDA's expander and verify CAH's input and quote do not prefill NVDA.
+7. Disable network, click **Fetch latest price**, and verify a non-fatal provider
+   error, preserved input, and that a manual assessment still works. Restore network.
+8. Restart Streamlit using the same data directory. Verify the last assessment and
+   all saved audit metadata remain visible, with no extra assessment created.
+9. Run `venv/bin/python -m pytest tests/test_market_context_quotes.py -q` for
+   deterministic stale REGULAR, closed-session, invalid/missing quote and provider
+   failure scenarios. Live Yahoo cannot reliably demonstrate known-session stale
+   detection. These tests also verify scanner and paper ledger bytes stay unchanged.

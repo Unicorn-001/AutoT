@@ -21,6 +21,11 @@ class MarketDataManager:
     """
 
     @staticmethod
+    def get_latest_quote(symbol: str):
+        from autot.market_data.quote import fetch_latest_quote
+        return fetch_latest_quote(symbol)
+
+    @staticmethod
     def get_stock_data(
         symbol: str,
         period: str,
