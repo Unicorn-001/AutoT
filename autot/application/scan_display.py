@@ -81,6 +81,9 @@ def render_scan_results(saved):
         with st.expander("Why this qualified", expanded=True):
             for row in displayed_opportunities:
                 st.write(qualification_explanation(row))
+        from autot.application.market_context_display import render_market_context
+        for index, row in enumerate(displayed_opportunities):
+            render_market_context(saved, index, row)
     else:
         st.info("No actionable BUY or SELL opportunities in this scan.")
 
