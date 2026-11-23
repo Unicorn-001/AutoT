@@ -49,7 +49,12 @@ def read_status(database=None, *, settings=None):
         if 'paper_monitor_status' in tables:
             row = db.execute('SELECT payload FROM paper_monitor_status WHERE singleton=1').fetchone()
             if row:
-                result.update(json.loads(row[0]))
+                payload = json.loads(row[0])
+                if not isinstance(payload, dict):
+                    raise ValueError('Invalid paper monitor status payload')
+                # Persisted diagnostics cannot override live lock detection/counts.
+                for key in ('heartbeat', 'next_expected_run', 'phase', 'pid'):
+                    result[key] = payload.get(key)
         if 'trades' in tables:
             for row in db.execute("SELECT json_extract(state, '$.status') AS status, count(*) AS n "
                                   "FROM trades GROUP BY status"):

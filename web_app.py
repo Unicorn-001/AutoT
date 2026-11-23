@@ -38,7 +38,11 @@ def main():
     active = store.load()
     if store.warning:
         st.warning(store.warning)
-    workspace = st.radio("Workspace", ["Scanner", "Paper Trading", "Real Trade Journal", "Settings"], horizontal=True)
+    workspace = st.radio("Workspace", ["Scanner", "Paper Trading", "Real Trade Journal", "Settings", "System Health / Status"], horizontal=True)
+    if workspace == "System Health / Status":
+        from autot.application.system_health_display import render_system_health
+        render_system_health()
+        return
     render_scan_status()
     if workspace == "Real Trade Journal":
         render_real_trade_journal()
