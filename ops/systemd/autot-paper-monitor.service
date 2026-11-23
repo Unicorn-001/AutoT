@@ -1,0 +1,26 @@
+[Unit]
+Description=AutoT paper-monitor
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=autot
+Group=autot
+WorkingDirectory=/opt/autot
+EnvironmentFile=/etc/autot/autot.env
+ExecStartPre=/opt/autot/venv/bin/python -m autot.ops validate --service paper
+ExecStart=/opt/autot/venv/bin/python -m autot.paper_monitor
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=600
+KillSignal=SIGTERM
+KillMode=control-group
+UMask=0077
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

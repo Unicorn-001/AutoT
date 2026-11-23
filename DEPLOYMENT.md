@@ -1,3 +1,7 @@
+> For current durable paper/scanner services and inactive Linux templates, see
+> [Continuous operation and recovery](ops/README.md). The Web V1 storage limitations
+> below are historical and do not describe the newer SQLite paper ledger.
+
 # Web V1 deployment readiness
 
 No deployment or authentication is configured by this change. The deployment target

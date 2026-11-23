@@ -54,3 +54,6 @@ def render_system_health():
     st.caption(f'Waiting services allow {HEARTBEAT_GRACE_SECONDS} seconds for heartbeat/deadline delays. Paper updates use their configured cadence plus this grace. Active scans have progress-driven heartbeats and no recorded completion deadline: RUNNING means a held worker lock with unverified progress. Process detection is local to this host. Scanner issues cover the latest 20 runs; paper issues show the latest failed/partial scheduled update.')
     st.write('Runtime data directory')
     st.code(status['data_directory'], language=None)
+
+    st.write('Startup / recovery diagnostics')
+    st.json(status['recovery'])

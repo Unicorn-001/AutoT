@@ -456,6 +456,9 @@ DailyScanner(executor=die).once(request_from_state(SettingsState()))
     before = store.runs()[0]
     assert before['status'] == 'RUNNING'
     assert before['symbols_fetched'] == (3 if mid_scan else 0)
+    assert ds.read_status()['last_run']['status'] == 'RUNNING'
+    assert store.runs()[0] == before
+    ds.DailyScanner(store=store).recover()
     status = ds.read_status()
     recovered = status['last_run']
     assert recovered['status'] == 'FAILED'
@@ -525,6 +528,7 @@ def test_duplicate_queued_launch_and_launch_error_log(monkeypatch):
     run = ScanStore().get(job)
     run.update(requested_at='2000-01-01T00:00:00+00:00')
     ScanStore().save(run)
+    ds.DailyScanner().recover()
     assert ds.read_status()['last_run']['status'] == 'FAILED'
     def fail(*a, **kw):
         raise OSError('sensitive detail')

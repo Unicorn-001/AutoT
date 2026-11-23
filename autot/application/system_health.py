@@ -110,7 +110,7 @@ def classify(status, now, *, service):
     return 'HEALTHY', 'Process lock is held and timing is within the service cadence.'
 
 
-def snapshot(*, now=None):
+def snapshot(*, now=None, integrity=False):
     now = now or datetime.now(timezone.utc)
     store = SettingsStore()
     config = store.load().settings.monitoring
@@ -136,4 +136,6 @@ def snapshot(*, now=None):
         status['configured'] = enabled if not store.warning else None
         status['health'], status['reason'] = classify(status, now, service=name)
         result[name] = status
+    from autot.application.recovery import diagnostics
+    result['recovery'] = diagnostics(now=now, integrity=integrity)
     return result

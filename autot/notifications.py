@@ -1,9 +1,10 @@
 """Durable audit projection and isolated delivery: python -m autot.notifications --once."""
 import argparse
+import signal
+import threading
 import json
 import logging
 import sqlite3
-import time
 from datetime import datetime, timedelta, timezone
 from typing import Protocol
 
@@ -257,14 +258,20 @@ def main(argv=None):
         return 0
     from autot.paper_trade.ledger import Ledger
     ledger = Ledger()
+    stop = threading.Event()
+    previous = {}
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        previous[signum] = signal.signal(signum, lambda *_: stop.set())
     try:
-        while True:
+        while not stop.is_set():
             process(ledger)
             if args.once:
                 return 0
-            time.sleep(30)
-    except KeyboardInterrupt:
+            stop.wait(30)
         return 0
+    finally:
+        for signum, handler in previous.items():
+            signal.signal(signum, handler)
 
 
 if __name__ == '__main__':

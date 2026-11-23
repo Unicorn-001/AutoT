@@ -351,7 +351,6 @@ def read_status():
         result['next_expected_run'] = None
     if not path.exists():
         return result
-    DailyScanner(store=ScanStore(path)).recover()
     db = sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True)
     try:
         runs = [json.loads(r[0]) for r in db.execute('SELECT payload FROM scan_runs ORDER BY rowid DESC')]
@@ -370,7 +369,7 @@ def read_status():
     finally:
         db.close()
     if result['process_status'] != 'ACTIVE':
-        result['phase'] = 'STOPPED'
+        result['next_expected_run'] = None
     if not result['configured']:
         result['next_expected_run'] = None
     from autot.notifications import read_status as notification_status
@@ -418,9 +417,9 @@ def main(argv=None):
         print('Daily scanner disabled.')
         return 0
     scanner = DailyScanner()
-    def interrupt(*_):
-        raise KeyboardInterrupt()
-    previous = signal.signal(signal.SIGTERM, interrupt)
+    previous = {}
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        previous[signum] = signal.signal(signum, lambda *_: scanner.stop.set())
     try:
         if args.once or args.job:
             if args.job:
@@ -439,7 +438,8 @@ def main(argv=None):
     except KeyboardInterrupt:
         return 0
     finally:
-        signal.signal(signal.SIGTERM, previous)
+        for signum, handler in previous.items():
+            signal.signal(signum, handler)
 
 
 if __name__ == '__main__':
