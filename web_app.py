@@ -7,7 +7,7 @@ import streamlit as st
 # Apply before application imports as well as runtime initialization failures.
 st.set_option("client.showErrorDetails", "none")
 
-from autot.application.scan_display import render_scan_results
+from autot.application.scan_display import render_scan_results, render_scan_status
 from autot.application.real_trade_journal_display import render_real_trade_journal
 from autot.application.paper_display import render_paper_dashboard, render_opportunity_actions
 from autot.settings.configuration_manager import ConfigurationManager
@@ -39,6 +39,7 @@ def main():
     if store.warning:
         st.warning(store.warning)
     workspace = st.radio("Workspace", ["Scanner", "Paper Trading", "Real Trade Journal", "Settings"], horizontal=True)
+    render_scan_status()
     if workspace == "Real Trade Journal":
         render_real_trade_journal()
         return
@@ -113,25 +114,15 @@ def main():
         if uploaded is not None:
             request['csv'] = uploaded.getvalue().decode('utf-8-sig')
         try:
-            job_id = launch(request)
-            st.success(f"Scan requested: {job_id}. You can navigate away; refresh to view results.")
+            launch(request)
         except Exception:
             LOGGER.exception('Unable to launch scan')
             st.error('Unable to start scan. A scan may already be running; check scanner status.')
+        else:
+            st.rerun()
 
-    from autot.daily_scanner import read_status
     from autot.application.scan_store import ScanStore
-    try:
-        status = read_status()
-    except ValueError:
-        st.warning('Scanner status unavailable until the settings storage warning is resolved.')
-        status = dict(process_status='NOT DETECTED', phase=None, last_run=None)
-    st.caption(f"Scanner process: {status['process_status']} · Phase: {status['phase'] or 'Idle'}")
     st.button('Refresh scan status/results')
-    if status['last_run']:
-        st.caption(f"Last scan: {status['last_run']['status']} · {status['last_run']['requested_at']}")
-        if status['last_run']['status'] == 'FAILED':
-            st.error('Scan failed. Check the universe source, market-data settings and server logs.')
     persisted = ScanStore().latest()
     if persisted is not None:
         st.session_state['scan'] = persisted
