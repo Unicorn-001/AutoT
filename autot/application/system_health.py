@@ -138,4 +138,6 @@ def snapshot(*, now=None, integrity=False):
         result[name] = status
     from autot.application.recovery import diagnostics
     result['recovery'] = diagnostics(now=now, integrity=integrity)
+    from autot.backup import backup_health
+    result['backup'] = backup_health(now=now)
     return result

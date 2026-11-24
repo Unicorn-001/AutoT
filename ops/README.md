@@ -91,3 +91,143 @@ Do not copy a developer .env or caches containing credentials into deployment bu
 Before installation, run `systemd-analyze verify` on the Linux target, test SIGTERM and
 reboot recovery with an isolated data copy, and verify network/provider access. These
 units have not been installed, activated or Linux-tested on this Mac.
+
+## Verified backups and disaster recovery
+
+No services or timers are installed by these changes. The backup commands do not
+change trading logic, initialize missing stores, or contact providers.
+
+### Inventory and consistency
+
+All five databases are **required** by format version 1:
+
+| Path under AUTOT_DATA_DIR | Durable contents | SQLite mode observed |
+| --- | --- | --- |
+| `paper_trading/ledger.sqlite3` | Accounts, trades, reservations, immutable snapshots, audit, checkpoints, monitor runs/status, notification outbox/checkpoints/health | WAL |
+| `scanner/scans.sqlite3` | Requests, history/results, schedule keys, worker status, notification outbox | DELETE |
+| `market_context/market_context.sqlite3` | Saved assessments and quote provenance | DELETE |
+| `real_trade_journal/real_trade_journal.sqlite3` | Independent real-trade journal | DELETE |
+| `settings/settings.sqlite3` | Revisions, profiles, change history, notification/monitor configuration | DELETE |
+
+Only paper explicitly selects WAL. Others retain their existing SQLite journal mode.
+Connections are short lived and transaction based; settings uses BEGIN IMMEDIATE and
+FULL synchronous writes. Paper uses 10-second SQLite waits, scanner/journal 30 seconds,
+settings 10 seconds, market context SQLite's default timeout. Monitor/update,
+scanner/scheduler/submission and notification advisory locks coordinate their own work;
+UI settings, assessments, and journal writes do not all hold lifetime locks.
+
+The online backup API snapshots committed SQLite content, including WAL data, without
+requiring monitor/scanner shutdown. It can briefly contend with rollback-journal writers.
+Each database has its own consistent snapshot, **not one simultaneous cross-database
+transaction**. For an exact quiet application checkpoint, stop all writers first.
+Backup attempts time out after approximately 120 seconds per database under contention.
+
+Existing CSV/JSON files beneath `config/`, `watchlists/`, `manual_trading/`, and
+`processed/` (including historical exports and legacy portfolio/open-journal state)
+are included as supplemental critical files. Their inventory and hashes are compared
+before/after capture; detected edits abort the whole set. Legacy nontransactional
+writers must be stopped for a guaranteed coherent multi-file capture. Some old portfolio
+helpers still default to checkout-relative `data_storage/processed`, regardless of
+AUTOT_DATA_DIR. These paths and custom external databases/universe files must be
+separately inventoried/backed up if used outside the selected root; they are not relocated
+or silently merged into the runtime backup.
+
+Excluded: `cache/` market data, `yfinance_cache/` (including cookies), `universe_cache/`,
+logs, diagnostic reports, OS metadata, old `audit_checkpoint_backups/`, lock files,
+and SQLite journal/WAL/SHM sidecars. The online backup merges committed database state
+into standalone databases. Caches are rebuildable, although a provider may no longer
+supply identical historic data. Browser session state is not persistent. Environment
+secrets, code and externally managed files require a separate secured recovery plan.
+
+### Commands
+
+```sh
+python -m autot.ops backup
+python -m autot.ops backup --output /var/backups/autot
+python -m autot.ops list-backups --output /var/backups/autot
+python -m autot.ops verify-backup /var/backups/autot/autot-<timestamp>-<id>
+python -m autot.ops restore /var/backups/autot/autot-<timestamp>-<id> --destination /var/lib/autot-restored
+python -m autot.ops prune-backups --dry-run
+python -m autot.ops prune-backups --keep 14 --days 30
+```
+
+`--output` selects a repository, not an individual set. The default is AUTOT_BACKUP_DIR,
+or a sibling named `<data-directory-name>-backups`; never place it inside the live data
+root. Use the same AUTOT_BACKUP_DIR for services and System Health. A one-off --output
+is not saved as global configuration.
+
+Sets have UTC timestamps and unique suffixes. The manifest records source root, capture
+start/completion, Git commit and dirty state when available, format version, required
+inventory, SHA-256 checksums, byte sizes, SQLite schema and user_version, and exclusions.
+Snapshots are staged privately, verified, flushed, and renamed before being discoverable.
+Errors return nonzero; a failed set is never listed as successful. A hard crash may leave
+hidden `.partial-*` staging directories; inspect and remove these manually when no backup
+is running. No original data is modified to repair or initialize an incomplete deployment.
+A never-used store must be deliberately provisioned through its normal application flow
+before the strict five-store backup succeeds; no allow-missing bypass is provided.
+
+Verification is read-only and repeatable: manifest/inventory, hashes, required tables,
+schema metadata, full SQLite integrity and foreign-key checks. Extra files, sidecars,
+missing files, unsupported formats and symlinks fail. `list-backups` re-verifies each set
+and reports invalid sets with nonzero status. Checksums detect damage, not malicious
+rewriting of both the manifest and payload; secure the repository against unauthorized
+writes. Backup sets contain private trading data and should have restricted access.
+
+System Health reads metadata only: latest successful creation time, age, repository,
+and "verified at creation; not rechecked" evidence. It warns when none exists, metadata
+is invalid, or age exceeds 48 hours. Explicit verification does not rewrite the backup
+or persist a fresh verification timestamp; retain its CLI/journald result for auditing.
+
+### Restore safety and disaster-recovery order
+
+1. Select a set and run verify-backup. Recover compatible application code/dependencies
+   (use manifest commit and retain any uncommitted code separately) and environment secrets.
+2. Restore to a **new, nonexistent directory**. Even an existing empty directory is
+   refused. There is deliberately no --force or in-place restore implementation: UI
+   writers cannot reliably be excluded by existing worker locks alone. Restore refuses
+   paths overlapping current AUTOT_DATA_DIR or the source backup, as well as destinations
+   with held monitor/update/notifications/scan/scheduler/submission locks.
+3. Restore verifies the source, stages files, verifies the staged copy, flushes and
+   publishes it, and reports every restored path. The source set is left unchanged.
+   Run a restore rehearsal before relying on a backup; validate counts/history offline.
+4. For actual cutover, stop the UI, paper monitor, scheduler, notification worker, manual
+   scanner children and legacy scripts; prevent service restart. Keep the old data root
+   intact. Update AUTOT_DATA_DIR to the restored root and ensure service ownership/access.
+   Never delete lock files to bypass an active writer.
+5. With the new environment, run `python -m autot.ops check` and service validation.
+   Review pending/open trades, scanner runs, saved settings and journal history. Restored
+   heartbeats/PIDs are historical evidence only. Provider catch-up remains subject to
+   available history and existing recovery rules. No backup tool invents missing fills.
+6. Start services only after review; inspect System Health and recovery logs. Delivery
+   is at-least-once: restoring old outbox state may resend previously delivered messages.
+   Verify the next scheduled backup and retain the previous root until recovery is accepted.
+
+Restoring into a separate fresh directory can happen while the original services run;
+the later production cutover requires the manual shutdown above. There is no process
+killing, automatic environment switch, schema migration, or service activation here.
+
+### Retention and future Linux scheduling
+
+Retention protects the newest 14 **valid** sets **or** anything newer than 30 days by
+default (union of protections). Use --keep and --days to adjust; --days 0 leaves only
+the count protection. --keep must be at least 1, so the newest valid set is never pruned,
+even if a newer set is corrupt. Dry-run prints candidates without deleting them. Only
+recognized sets that pass full verification are eligible; invalid/unknown directories
+are preserved for manual investigation. Backup creation and pruning share a repository
+lock. Dry-run may create this lock/repository, but does not modify any backup set.
+
+On the future Linux host, provision `/var/backups/autot` owned by `autot` with mode 0700,
+preferably on a separate disk, and set AUTOT_BACKUP_DIR in the service environment.
+Review `systemd/autot-backup.service` and `.timer`: daily 03:15 UTC plus up to five minutes
+jitter, after typical US close processing, with missed runs caught up on boot. Adjust
+for actual workloads; backups do not depend on a Streamlit session. No automatic pruning
+is embedded in the timer: first inspect dry-run output, then add a separately reviewed
+retention job if desired. Monitor journal failures, free space and backup age. Run
+`systemd-analyze verify` on Linux before installing/enabling these templates.
+
+A local backup is insufficient for host/disk loss. Copy only completed, verified sets
+off-machine/offsite using a secured transfer, encrypted storage, and independent retention;
+verify again after transfer and rehearse restore from that copy. Choose a shorter cadence
+if losing up to a day of committed activity is unacceptable. This tooling does not
+provide replication, encryption/key management, automatic offsite transfer, or a global
+transaction across stores.

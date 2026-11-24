@@ -1,0 +1,13 @@
+[Unit]
+Description=AutoT verified online data backup
+
+[Service]
+Type=oneshot
+User=autot
+Group=autot
+WorkingDirectory=/opt/autot
+EnvironmentFile=/etc/autot/autot.env
+ExecStart=/opt/autot/venv/bin/python -m autot.ops backup
+UMask=0077
+StandardOutput=journal
+StandardError=journal

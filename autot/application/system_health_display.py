@@ -57,3 +57,8 @@ def render_system_health():
 
     st.write('Startup / recovery diagnostics')
     st.json(status['recovery'])
+
+    st.write('Data backups')
+    st.json(status['backup'])
+    if status['backup']['warning']:
+        st.warning(status['backup']['warning'])
