@@ -15,11 +15,18 @@ def render_market_context(saved, index, row):
             return
         st.caption(f'Scanner run: {run_id} · Opportunity: {index} · Advisory only; no trades are placed.')
         key = f'market_context_{run_id}_{index}'
+        source = st.selectbox('Quote provider', ['Yahoo', 'eToro'], key=key + '_provider')
         if st.button('Fetch latest price', key=key + '_fetch'):
             try:
-                quote = MarketDataManager.get_latest_quote(row['symbol'])
+                if source == 'eToro':
+                    from autot.broker.etoro.client import Client
+                    from autot.broker.etoro.market import EtoroQuoteProvider
+                    quote = MarketDataManager.get_latest_quote(row['symbol'],
+                        provider=EtoroQuoteProvider(Client()), side=row['signal'])
+                else:
+                    quote = MarketDataManager.get_latest_quote(row['symbol'])
                 st.session_state[key + '_quote'] = quote
-                st.session_state[key + '_price'] = f'{quote.price:.2f}'
+                st.session_state[key + '_price'] = str(quote.price) if source == 'eToro' else f'{quote.price:.2f}'
             except Exception as error:
                 # Keep the prior input and its provenance on a failed refresh.
                 st.error(f'Unable to fetch latest price: {error}')
@@ -29,12 +36,16 @@ def render_market_context(saved, index, row):
             st.write(f'Latest fetched price: {quote.price:.2f}')
             st.write(f"Quote timestamp: {audit['quote_timestamp'] or 'unavailable'}")
             st.write(f'Source/provider: {quote.source}')
+            if quote.source == 'eToro':
+                st.write(f'eToro bid: {quote.bid} · eToro ask: {quote.ask}')
+                st.write(f'Selected executable reference ({quote.side}): {quote.price}')
+                st.write(f'Spread: {quote.spread_absolute} · Spread % (midpoint): {quote.spread_percent}')
             st.write(f"Session: {quote.session_label or 'unknown'}")
             age = audit['quote_age_seconds']
             st.write(f'Quote age: {age:.0f} seconds ({age / 60:.1f} minutes)' if age is not None else 'Quote age: unavailable')
             if audit['stale']:
                 st.warning('Stale quote: older than the regular-session freshness limit. Review or override before assessing.')
-            if quote.session_label is None or age is None:
+            if quote.source != 'eToro' and (quote.session_label is None or age is None):
                 st.caption('Freshness unverified: session or quote time is unknown. Yahoo supplies a bar close, not an executable bid/ask.')
         price = st.text_input('Current / executable price', key=key + '_price',
                               help='Fetch a quote or enter a price manually. You can override a fetched price before assessing.')

@@ -21,7 +21,9 @@ class MarketDataManager:
     """
 
     @staticmethod
-    def get_latest_quote(symbol: str):
+    def get_latest_quote(symbol: str, *, provider=None, side='BUY'):
+        if provider is not None:
+            return provider.quote(symbol, side)
         from autot.market_data.quote import fetch_latest_quote
         return fetch_latest_quote(symbol)
 
